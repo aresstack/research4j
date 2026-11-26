@@ -20,8 +20,21 @@ bash gradlew clean build
 bash gradlew publishToMavenLocal
 ```
 
-Ask AI host-dependent tests remain in the source tree but are explicitly excluded from the standalone test source set until replaced with host-neutral fixtures. The existing Firefox channel is retained; persistent Firefox profiles, extension loading, intranet access policy and Space Harvester integration require separate validation. No Maven Central release is claimed.
+Ask AI host-dependent tests remain in the source tree but are explicitly excluded from the standalone test source set until replaced with host-neutral fixtures. The existing Firefox channel is retained; persistent Firefox profiles, extension loading, intranet access policy and Space Harvester integration require separate validation.
 
 ## License
 
 MIT; see LICENSE.
+
+## Verification and releases
+
+The default build runs library tests without a live browser or model. Environment-dependent tests named
+`*Live*Test` run separately via `bash gradlew liveTest`. For example, select the installed Firefox with
+`ASKAI_TEST_BROWSER_CHANNEL=firefox bash gradlew :browser-playwright:liveTest --tests '*PlaywrightLiveBrowserTest'`.
+The host-dependent tests listed in research-agent-runtime/build.gradle still require standalone host fixtures.
+Firefox history navigation currently fails with playwright4j 0.3.0 (see https://github.com/aresstack/playwright4j/issues/79).
+Do not treat the baseline library as acceptance of the Space Harvester integration.
+
+Build signed release bundles in GitHub Actions on a version tag. Central Portal credentials and signing
+keys are supplied by the existing organization secrets. The portal verification timeout is two hours.
+Locally, `bash gradlew zipAggregation -PreleaseVersion=0.1.0` builds an unsigned bundle without uploading it.
