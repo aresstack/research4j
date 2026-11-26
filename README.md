@@ -13,7 +13,7 @@ The original Java packages and resources are retained to minimize migration chan
 
 ## Build
 
-Publish Serp4j to Maven Local first (upstream currently consumes 0.1.0-SNAPSHOT). Then run:
+Resolve Serp4j 0.1.0 and all other external dependencies directly from Maven Central. No local Maven publication is required. Then run:
 
 ```sh
 bash gradlew clean build

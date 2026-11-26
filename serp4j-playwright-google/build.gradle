@@ -5,7 +5,7 @@
 apply plugin: 'java-library'
 
 
-def serp4jVersion = (findProperty('serp4jVersion') ?: '0.1.0-SNAPSHOT').toString()
+def serp4jVersion = rootProject.serp4jVersion
 
 dependencies {
     // serp4j-playwright brings serp4j-core and the Playwright API WITHOUT a driver; browser-runtime-java21 brings the

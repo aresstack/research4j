@@ -3,14 +3,11 @@ allprojects {
     version = (findProperty('releaseVersion') ?: '0.1.0-SNAPSHOT').toString()
     repositories {
         mavenCentral()
-        // Resolve unreleased Serp4j artifacts only from the local Maven repository.
-        mavenLocal {
-            content { includeModuleByRegex('com\\.aresstack', 'serp4j-.*') }
-        }
     }
 }
 
 ext.gsonVersion = '2.14.0'
+ext.serp4jVersion = '0.1.0'
 
 subprojects {
     apply plugin: 'java-library'

@@ -5,8 +5,8 @@
 apply plugin: 'java-library'
 
 // Serp4J (WP5): the productive Brave / Bright Data / DataForSEO providers come from Serp4J. The repository
-// (mavenLocal, filtered to com.aresstack:serp4j-*) is declared in the root build.gradle; see docs/serp4j.md.
-def serp4jVersion = (findProperty('serp4jVersion') ?: '0.1.0-SNAPSHOT').toString()
+// Resolve the versioned artifacts from Maven Central.
+def serp4jVersion = rootProject.serp4jVersion
 
 dependencies {
     // Ports/model in the public adapter signatures (Serp4jWebSearchProvider wraps a Serp4J SearchProvider).
