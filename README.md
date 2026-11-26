@@ -1,4 +1,8 @@
+<p align="center"><img src="docs/banner.png" alt="Research4j: browser-based research and web intelligence for Java" width="100%"></p>
+
 # Research4j
+
+Browser-based research and web intelligence for Java: browser automation, search strategy, information gathering, source evaluation and knowledge extraction as reusable libraries.
 
 Reusable Java research and browser components extracted from [Ask AI](https://github.com/aresstack/askai) at commit [3dfeecee60b1ee7db9e7cbead98cef13240ff0b6](https://github.com/aresstack/askai/commit/3dfeecee60b1ee7db9e7cbead98cef13240ff0b6). Ask AI remains unchanged; migration is tracked in [Ask AI #292](https://github.com/aresstack/askai/issues/292).
 
