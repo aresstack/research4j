@@ -238,7 +238,7 @@ public final class BrowserSearchEngineSelection {
             if (sb.length() > 0) {
                 sb.append(',');
             }
-            sb.append(entry.getEngineId()).append(':').append(entry.isEnabled() ? "on" : "off")
+            sb.append(escapeId(entry.getEngineId())).append(':').append(entry.isEnabled() ? "on" : "off")
                     .append(':').append(entry.getResultPages())
                     .append(':').append(formatDelaySeconds(entry.getDelayMillis()))
                     .append(':').append(entry.getPriority())
@@ -267,6 +267,20 @@ public final class BrowserSearchEngineSelection {
             parsed = flat;
         }
         return new BrowserSearchEngineSelection(parsed, mode).encodeEntries();
+    }
+
+    /**
+     * An engine id in the flat form: a search page's URL ({@link BrowserSearchEngineCatalog#isSearchPage}) carries
+     * {@code :} and {@code ,}, the separators of the form, so they (and {@code %}) are written percent-encoded.
+     * Catalog ids contain none of them and stay as they are.
+     */
+    static String escapeId(String id) {
+        return id.replace("%", "%25").replace(":", "%3A").replace(",", "%2C");
+    }
+
+    static String unescapeId(String id) {
+        return id.replace("%3A", ":").replace("%3a", ":").replace("%2C", ",").replace("%2c", ",")
+                .replace("%25", "%");
     }
 
     private static String joinCodes(List<String> codes) {
@@ -324,7 +338,7 @@ public final class BrowserSearchEngineSelection {
                 continue;
             }
             String[] parts = text.split(":", -1);
-            String id = parts[0].trim();
+            String id = unescapeId(parts[0].trim());
             if (id.isEmpty()) {
                 continue;
             }
