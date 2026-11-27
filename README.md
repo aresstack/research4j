@@ -12,6 +12,11 @@ Reusable Java research and browser components extracted from [Ask AI](https://gi
   (Korb, the contract of [Knowledge4j](https://github.com/aresstack/knowledge4j)) and knows no browser, no search
   engine and no writing. See below.
 - browser-api, browser-playwright, browser-search-analysis, browser-static-http
+- **browser-tools**: the browser tools of a chat host (`browser_tabs`, `_navigate`, `_read`, `_links`, `_follow`,
+  `_back`, `_document`, `_controls`, `_act`, `_screenshot`, `_open_many`, `_mark`, `_close`), one browser per chat with
+  its own profile, access rules per profile with the host's question for unknown sites, the question before
+  data-changing actions and the progress of a web exploration. Moved from the Enterprise AI Client, see
+  [browser-tools/UPSTREAM.md](browser-tools/UPSTREAM.md); its contract (`ChatBrowser`, engine SPI) is in browser-api.
 - web-search-providers, serp4j-playwright-google
 - research-domain, research-agent-runtime
 - agent-model-runtime-api, mcp-runtime-api (neutral host contracts)

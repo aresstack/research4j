@@ -2,7 +2,7 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 rootProject.name = 'research4j'
-include 'browser-api', 'browser-playwright', 'browser-search-analysis', 'browser-static-http'
+include 'browser-api', 'browser-tools', 'browser-playwright', 'browser-search-analysis', 'browser-static-http'
 include 'web-search-providers', 'serp4j-playwright-google', 'research-domain', 'research-agent-runtime'
 include 'agent-model-runtime-api', 'mcp-runtime-api'
 include 'research-core'
