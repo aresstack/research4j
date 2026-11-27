@@ -70,6 +70,7 @@ jobs:
           bash gradlew --no-daemon :browser-playwright:liveTest
           --tests 'com.aresstack.askai.browser.playwright.PlaywrightChatEngineLiveTest'
           --tests 'com.aresstack.askai.browser.playwright.ChatToolsOverPlaywrightLiveTest'
+          --tests 'com.aresstack.askai.browser.playwright.ChatReadContractLiveTest'
       - name: No live test skipped
         working-directory: research4j/browser-playwright/build/test-results/liveTest
         run: |
