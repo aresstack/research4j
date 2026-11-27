@@ -173,7 +173,8 @@ public final class BasketResearch {
      *
      * @param fence   mission and bounds
      * @param concept the mind map; {@code null} searches by the mission alone
-     * @param start   the basket so far (a further search adds to it); {@code null} for an empty one
+     * @param start   the basket so far (a further search adds to it); {@code null} for an empty one. The result's
+     *                basket carries {@code fence}, whatever fence the start basket had
      */
     public Result run(Fence fence, SearchConcept concept, SourceBasket start, CancellationSignal cancel,
                       ProgressListener progress) {
@@ -228,7 +229,8 @@ public final class BasketResearch {
             for (SearchChannel channel : searches) {
                 guardedSearches.add(new GuardedSourceSearchPort(channel.port(), channel.target(), guard));
             }
-            this.basket = start;
+            // The basket carries the fence it is collected for into Phase 4 (knowledge4j SourceBasket.fence()).
+            this.basket = start.withFence(fence);
             for (SourceRef ref : start.sources()) {
                 seen.add(key(ref));
                 accepted.put(key(ref), ref);

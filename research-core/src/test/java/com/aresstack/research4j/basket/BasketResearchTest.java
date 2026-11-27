@@ -79,6 +79,7 @@ class BasketResearchTest {
 
         List<String> basket = ids(result.basket());
         assertTrue(basket.containsAll(List.of("regentonne", "zisterne", "wasser", "notiz")), basket.toString());
+        assertEquals(FENCE.basis(), result.basket().fence().basis(), "the basket carries its fence into Phase 4");
         assertFalse(basket.contains("grillfest"), "outside the fence");
         assertTrue(result.profiles().stream().anyMatch(p -> p.source().id().equals("grillfest")
                 && p.fit() == FenceFit.AUSSEN));
