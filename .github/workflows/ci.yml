@@ -12,16 +12,71 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: research4j
+      # Knowledge4j is not released yet: a fixed commit next to it, joined by the Composite Build.
+      - uses: actions/checkout@v4
+        with:
+          repository: aresstack/knowledge4j
+          ref: 4f20975b93c0b558ee7ff197366eba51162bb042
+          path: knowledge4j
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and verify libraries
+        working-directory: research4j
         run: bash gradlew --no-daemon clean build zipAggregation
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: '**/build/test-results/test/'
+          path: 'research4j/**/build/test-results/test/'
           if-no-files-found: ignore
+  # The chat browser on the installed Firefox (research4j#1): the runner image ships Firefox; a missing one fails here
+  # instead of skipping the environment-gated live tests.
+  firefox-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: research4j
+      - uses: actions/checkout@v4
+        with:
+          repository: aresstack/knowledge4j
+          ref: 4f20975b93c0b558ee7ff197366eba51162bb042
+          path: knowledge4j
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Locate Firefox
+        id: firefox
+        run: |
+          path="$(readlink -f "$(command -v firefox)")"
+          test -x "$path"
+          "$path" --version
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+      - name: Chat engine and tools on Firefox
+        working-directory: research4j
+        env:
+          ASKAI_TEST_BROWSER_CHANNEL: firefox
+          ASKAI_TEST_BROWSER_EXECUTABLE: ${{ steps.firefox.outputs.path }}
+        run: >
+          bash gradlew --no-daemon :browser-playwright:liveTest
+          --tests 'com.aresstack.askai.browser.playwright.PlaywrightChatEngineLiveTest'
+          --tests 'com.aresstack.askai.browser.playwright.ChatToolsOverPlaywrightLiveTest'
+      - name: No live test skipped
+        working-directory: research4j/browser-playwright/build/test-results/liveTest
+        run: |
+          ls TEST-*.xml
+          ! grep -l "<skipped" TEST-*.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-live-results
+          path: 'research4j/browser-playwright/build/test-results/liveTest/'
+          if-no-files-found: error

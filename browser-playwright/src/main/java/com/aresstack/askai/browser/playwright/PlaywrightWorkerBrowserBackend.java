@@ -149,7 +149,7 @@ final class PlaywrightWorkerBrowserBackend implements WorkerBrowserBackend {
                 CamoufoxSessionPrefs.apply(prefs); // no bfcache + no blocking "resend data" prompt
                 // Non-persistent: Playwright gives the process a throw-away profile and deletes it on close.
                 BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
-                        .setChannel("moz-firefox")
+                        .setChannel(Playwright4jDriver.FIREFOX_BIDI_CHANNEL)
                         .setExecutablePath(camoufoxExecutable)
                         .setHeadless(options.headless)
                         .setEnv(environment)
@@ -211,9 +211,9 @@ final class PlaywrightWorkerBrowserBackend implements WorkerBrowserBackend {
             context.setDefaultNavigationTimeout(timeoutMillis);
             context.setDefaultTimeout(timeoutMillis);
             final boolean refuseEngines = refuseSearchEngines;
-            if (!options.allowPrivateNetworks || refuseEngines) {
-                final Predicate<String> allowed = options.allowPrivateNetworks ? url -> true
-                        : new PlaywrightSessionFactory.PrivateTargetRequestFilter();
+            if (options.filtersPrivateTargets() || refuseEngines) {
+                final Predicate<String> allowed = options.filtersPrivateTargets()
+                        ? new PlaywrightSessionFactory.PrivateTargetRequestFilter() : url -> true;
                 context.route("**/*", route -> {
                     if (refuseEngines && route.request().isNavigationRequest()
                             && com.aresstack.askai.browser.search.engine.SearchEngineHosts.isEngineHost(
@@ -256,8 +256,7 @@ final class PlaywrightWorkerBrowserBackend implements WorkerBrowserBackend {
             driver.setRenderedCapture(new RenderedPageDocumentCapture(options.settings.analysis));
             driver.readThroughAddon(readBridge);
             // Worker contexts never reach a search engine: workers search with the concept phase's web search tool.
-            UrlSafetyPolicy policy = options.allowPrivateNetworks
-                    ? UrlSafetyPolicy.allowingPrivateNetworks() : UrlSafetyPolicy.strict();
+            UrlSafetyPolicy policy = options.urlPolicy();
             if (refuseSearchEngines) {
                 policy = policy.refusingSearchEngines(java.util.Collections.<String>emptySet());
             }

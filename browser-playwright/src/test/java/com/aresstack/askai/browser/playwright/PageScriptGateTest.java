@@ -121,12 +121,22 @@ public class PageScriptGateTest {
         assertTrue("page scripts must not click/focus/submit: " + violations, violations.isEmpty());
     }
 
+    /**
+     * The engine of the chat tools (browser-tools) is not the research browser: it carries the contract of the
+     * Enterprise AI Client's chat browser, whose page scripts read and, when real input is not possible, act as a
+     * fallback. Script-free mode and the no-interaction rule belong to the research browser only.
+     */
+    static final List<String> CHAT_ENGINE_SOURCES = java.util.Arrays.asList("ChatPageScripts.java",
+            "PlaywrightChatConnection.java");
+
     private static List<Path> mainSources() throws IOException {
         Path root = Paths.get("src/main/java/com/aresstack/askai/browser/playwright");
         assertTrue("run from the browser-playwright module: " + root.toAbsolutePath(), Files.isDirectory(root));
         List<Path> sources = new ArrayList<Path>();
         try (Stream<Path> walk = Files.walk(root)) {
-            walk.filter(path -> path.toString().endsWith(".java")).forEach(sources::add);
+            walk.filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !CHAT_ENGINE_SOURCES.contains(path.getFileName().toString()))
+                    .forEach(sources::add);
         }
         return sources;
     }

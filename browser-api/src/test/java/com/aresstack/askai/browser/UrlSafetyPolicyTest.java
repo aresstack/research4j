@@ -44,4 +44,27 @@ public class UrlSafetyPolicyTest {
         assertEquals("http", policy.check("http://127.0.0.1/x").getScheme());
         assertEquals("https", policy.check("https://127.0.0.1/y").getScheme());
     }
+
+    @Test
+    public void theHostGateDecidesAboutHostsButNotAboutSchemes() throws Exception {
+        java.util.List<String> asked = new java.util.ArrayList<>();
+        UrlSafetyPolicy policy = UrlSafetyPolicy.withHostGate(target -> {
+            asked.add(target.getHost());
+            if (target.getHost().endsWith(".verboten.example")) {
+                throw new BrowserException("Nicht freigegeben: " + target.getHost());
+            }
+        });
+        // An intranet name the public rule could not even resolve passes when the host admits it.
+        assertEquals("wiki.intern.example", policy.check("https://wiki.intern.example/start").getHost());
+        assertEquals("127.0.0.1", policy.check("http://127.0.0.1:8080/x").getHost());
+        expectBlocked(policy, "https://seite.verboten.example/");
+        // The scheme rule runs before the gate and is never handed to the host.
+        expectBlocked(policy, "file:///etc/passwd");
+        assertEquals(java.util.Arrays.asList("wiki.intern.example", "127.0.0.1", "seite.verboten.example"), asked);
+    }
+
+    @Test
+    public void withoutAGateThePublicRuleStays() {
+        expectBlocked(UrlSafetyPolicy.withHostGate(null), "http://127.0.0.1:8080/x");
+    }
 }

@@ -37,18 +37,28 @@ final class PlaywrightSessionFactory {
                                  String searchUrlTemplate, BrowserLimits limits,
                                  com.aresstack.askai.browser.search.LegacyBrowserSearchSettings settings,
                                  String profileKey) {
+        return create(channel, headless, allowPrivateNetworks ? UrlSafetyPolicy.allowingPrivateNetworks()
+                : UrlSafetyPolicy.strict(), !allowPrivateNetworks, searchUrlTemplate, limits, settings, profileKey);
+    }
+
+    /**
+     * @param policy                the navigation policy (the host's gate or the public-host rule)
+     * @param filterPrivateTargets  whether the in-page filter against literal private addresses runs
+     */
+    static BrowserSession create(String channel, boolean headless, UrlSafetyPolicy policy,
+                                 boolean filterPrivateTargets, String searchUrlTemplate, BrowserLimits limits,
+                                 com.aresstack.askai.browser.search.LegacyBrowserSearchSettings settings,
+                                 String profileKey) {
         String normalizedChannel = normalizeChannel(channel);
         PlaywrightReadiness readiness = new PlaywrightCapabilityProbe().probe(normalizedChannel);
         System.err.println("[browser-mcp] playwright readiness: " + readiness.render());
         if (!readiness.isReady()) {
             return new UnavailableSession(readiness.render());
         }
-        UrlSafetyPolicy policy = allowPrivateNetworks
-                ? UrlSafetyPolicy.allowingPrivateNetworks() : UrlSafetyPolicy.strict();
         try {
             Playwright4jDriver driver = Playwright4jDriver.launch(normalizedChannel, headless,
                     settings.navigation.navigationCommitTimeoutMillis, profileKey,
-                    allowPrivateNetworks ? null : new PrivateTargetRequestFilter(),
+                    filterPrivateTargets ? new PrivateTargetRequestFilter() : null,
                     settings.consent, settings.captcha);
             driver.setRenderedCapture(new RenderedPageDocumentCapture(settings.analysis));
             return new PlaywrightBrowserSession(driver, policy, limits, searchUrlTemplate, null,

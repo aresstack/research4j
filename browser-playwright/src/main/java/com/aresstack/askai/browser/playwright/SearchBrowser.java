@@ -547,7 +547,7 @@ public final class SearchBrowser implements AutoCloseable {
         environment.putAll(launch.environment());
         Map<String, Object> prefs = new LinkedHashMap<String, Object>(launch.prefs());
         BrowserType.LaunchOptions options = new BrowserType.LaunchOptions()
-                .setChannel("moz-firefox")
+                .setChannel(Playwright4jDriver.FIREFOX_BIDI_CHANNEL)
                 .setExecutablePath(executable)
                 .setHeadless(headless)
                 .setEnv(environment)

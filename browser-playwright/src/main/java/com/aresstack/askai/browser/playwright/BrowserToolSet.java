@@ -104,7 +104,14 @@ final class BrowserToolSet {
     }
 
     private String search(String query, List<String> engineIds) throws BrowserException {
-        WebSearchResult result = session.search(query, engineIds);
+        return renderSearch(session.search(query, engineIds), session.challengeStatus());
+    }
+
+    /**
+     * The web_search text contract: PROVIDER lines, one block per hit, a pending CHALLENGE line and one ATTEMPT line
+     * per engine. Also the answer of the chat tools' browser_search ({@link PlaywrightChatConnection#search}).
+     */
+    static String renderSearch(WebSearchResult result, List<String> challengeStatus) {
         StringBuilder sb = new StringBuilder();
         // Consumers treat every engine host as transit — never an evidence source.
         for (String providerHost : result.getProviderHosts()) {
@@ -117,7 +124,7 @@ final class BrowserToolSet {
         }
         // A pending manual challenge travels typed WITH the results (same line format as
         // web_challenge_status), so the consumer can lock the domain family.
-        for (String line : session.challengeStatus()) {
+        for (String line : challengeStatus) {
             if (line.startsWith("CHALLENGE: ")) {
                 sb.append(line).append('\n');
             }
