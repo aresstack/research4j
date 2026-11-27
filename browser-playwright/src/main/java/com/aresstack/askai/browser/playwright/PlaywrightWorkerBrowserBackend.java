@@ -142,7 +142,7 @@ final class PlaywrightWorkerBrowserBackend implements WorkerBrowserBackend {
                 prefs.putIfAbsent("browser.sessionhistory.max_total_viewers", 0);
                 // Non-persistent: Playwright gives the process a throw-away profile and deletes it on close.
                 BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
-                        .setChannel("moz-firefox")
+                        .setChannel(Playwright4jDriver.FIREFOX_BIDI_CHANNEL)
                         .setExecutablePath(camoufoxExecutable)
                         .setHeadless(options.headless)
                         .setEnv(environment)

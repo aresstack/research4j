@@ -388,14 +388,22 @@ final class Playwright4jDriver implements PlaywrightDriver {
 
     /** Launch options of the local Firefox (chosen location, else autodetected). */
     static BrowserType.LaunchOptions localFirefoxOptions(boolean headless) {
+        return new BrowserType.LaunchOptions()
+                .setChannel(FIREFOX_BIDI_CHANNEL)
+                .setExecutablePath(localFirefoxExecutable())
+                .setHeadless(headless);
+    }
+
+    /** Playwright's channel for a Firefox driven over WebDriver BiDi (local Firefox and Camoufox). */
+    static final String FIREFOX_BIDI_CHANNEL = "moz-firefox";
+
+    /** The local Firefox to start (chosen location, else autodetected); fails readably when there is none. */
+    static java.nio.file.Path localFirefoxExecutable() {
         String executable = BrowserExecutables.effective(BrowserExecutables.FIREFOX);
         if (executable == null) {
-            throw new IllegalStateException("No Firefox found; choose its location under Research Agent \u2192 Browser");
+            throw new IllegalStateException("No Firefox found; choose its location in the browser settings");
         }
-        return new BrowserType.LaunchOptions()
-                .setChannel("moz-firefox")
-                .setExecutablePath(java.nio.file.Paths.get(executable))
-                .setHeadless(headless);
+        return java.nio.file.Paths.get(executable);
     }
 
     @Override
@@ -1982,7 +1990,7 @@ final class Playwright4jDriver implements PlaywrightDriver {
         // (page.url() stays stale, goBack never settles) — the same pref Argos sets.
         prefs.putIfAbsent("browser.sessionhistory.max_total_viewers", 0);
         BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
-                .setChannel("moz-firefox")
+                .setChannel(FIREFOX_BIDI_CHANNEL)
                 .setExecutablePath(executable)
                 .setHeadless(headless)
                 .setEnv(environment)

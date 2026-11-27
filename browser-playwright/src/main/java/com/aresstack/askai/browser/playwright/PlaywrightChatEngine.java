@@ -19,8 +19,8 @@ import java.util.Map;
 /**
  * The engine of the chat browser tools (browser-tools) on Playwright: one visible browser per chat profile folder,
  * started as a persistent context, so sign-ins and cookies stay with the chat and never travel between chats.
- * Channels: {@code msedge} and {@code chrome} (installed browsers, house proxy and certificates) or {@code camoufox}
- * (the managed Firefox build, downloaded on its first start). Which channel, how long a start and a navigation may
+ * Channels: {@code firefox} (the installed Firefox over WebDriver BiDi, as research4j#1 plans it), {@code camoufox}
+ * (the managed Firefox build, downloaded on its first start), {@code msedge} and {@code chrome} (installed browsers). Which channel, how long a start and a navigation may
  * take, all come from the host; nothing here is fixed.
  */
 public final class PlaywrightChatEngine implements BrowserEngine {
@@ -34,7 +34,7 @@ public final class PlaywrightChatEngine implements BrowserEngine {
     private String testSearchUrlTemplate;
 
     /**
-     * @param channel                 {@code msedge}, {@code chrome} or {@code camoufox}
+     * @param channel                 {@code firefox}, {@code camoufox}, {@code msedge} or {@code chrome}
      * @param headless                run without a window (tests only; the chat browser is visible)
      * @param startTimeoutMillis      how long the browser may take to start
      * @param navigationTimeoutMillis how long one navigation may take
@@ -96,6 +96,16 @@ public final class PlaywrightChatEngine implements BrowserEngine {
                         Locale.getDefault());
                 context = playwright.firefox().launchPersistentContext(profileDirectory,
                         Playwright4jDriver.camoufoxOptions(executable, launch, headless)
+                                .setTimeout(startTimeoutMillis));
+            } else if (BrowserExecutables.FIREFOX.equals(channel)) {
+                // The installed Firefox over WebDriver BiDi, on the chat's own profile folder (never the user's).
+                context = playwright.firefox().launchPersistentContext(profileDirectory,
+                        new BrowserType.LaunchPersistentContextOptions()
+                                .setChannel(Playwright4jDriver.FIREFOX_BIDI_CHANNEL)
+                                .setExecutablePath(Playwright4jDriver.localFirefoxExecutable())
+                                .setHeadless(headless)
+                                .setAcceptDownloads(false)
+                                .setViewportSize(null)
                                 .setTimeout(startTimeoutMillis));
             } else {
                 BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
