@@ -1707,6 +1707,7 @@ final class Playwright4jDriver implements PlaywrightDriver {
         return new Consumer<Page>() {
             public void accept(Page gone) {
                 viewedDocuments.remove(gone);
+                watchedChatTabs.remove(gone); // a closed tab is no longer kept reachable
                 if (closed || gone != page) {
                     return;
                 }

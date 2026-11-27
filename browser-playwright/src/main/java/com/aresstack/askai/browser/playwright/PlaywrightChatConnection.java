@@ -193,6 +193,9 @@ final class PlaywrightChatConnection implements BrowserConnection {
             // with the chat tools' access guard; the search engines are the host's configured ones.
             tab(session, contextId);
             try {
+                // The session lives on between searches: a challenge the user solved or closed since releases its
+                // engine before this search selects engines.
+                session.challengeStatus();
                 return BrowserToolSet.renderSearch(session.search(query, engines), session.challengeStatus());
             } catch (com.aresstack.askai.browser.BrowserException e) {
                 throw new BrowserException(BrowserException.Kind.FAILED, "Websuche fehlgeschlagen: " + e.getMessage(),
