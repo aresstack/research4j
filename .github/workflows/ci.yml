@@ -71,6 +71,19 @@ jobs:
           --tests 'com.aresstack.askai.browser.playwright.PlaywrightChatEngineLiveTest'
           --tests 'com.aresstack.askai.browser.playwright.ChatToolsOverPlaywrightLiveTest'
           --tests 'com.aresstack.askai.browser.playwright.ChatReadContractLiveTest'
+      - name: Chat web search in the search browser on Firefox
+        working-directory: research4j
+        env:
+          ASKAI_TEST_BROWSER_CHANNEL: firefox
+          ASKAI_TEST_BROWSER_EXECUTABLE: ${{ steps.firefox.outputs.path }}
+        run: >
+          bash gradlew --no-daemon :research-agent-runtime:liveTest
+          --tests 'com.aresstack.askai.research.runtime.search.SearchBrowserWebSearchLiveTest'
+      - name: No search browser live test skipped
+        working-directory: research4j/research-agent-runtime/build/test-results/liveTest
+        run: |
+          ls TEST-*.xml
+          ! grep -l "<skipped" TEST-*.xml
       - name: No live test skipped
         working-directory: research4j/browser-playwright/build/test-results/liveTest
         run: |
