@@ -29,6 +29,9 @@ public final class PlaywrightChatEngine implements BrowserEngine {
     private final boolean headless;
     private final long startTimeoutMillis;
     private final long navigationTimeoutMillis;
+    private final com.aresstack.askai.browser.search.LegacyBrowserSearchSettings searchSettings;
+    /** Dev/test only: one local search engine URL with {@code {query}}, host:port domain families; null in production. */
+    private String testSearchUrlTemplate;
 
     /**
      * @param channel                 {@code msedge}, {@code chrome} or {@code camoufox}
@@ -38,10 +41,28 @@ public final class PlaywrightChatEngine implements BrowserEngine {
      */
     public PlaywrightChatEngine(String channel, boolean headless, long startTimeoutMillis,
                                 long navigationTimeoutMillis) {
+        this(channel, headless, startTimeoutMillis, navigationTimeoutMillis, null);
+    }
+
+    /**
+     * @param searchSettings the search engines and SERP handling of {@code browser_search} ({@code null} = the
+     *                       central defaults, {@link com.aresstack.askai.browser.search.LegacyBrowserSearchDefaults})
+     */
+    public PlaywrightChatEngine(String channel, boolean headless, long startTimeoutMillis,
+                                long navigationTimeoutMillis,
+                                com.aresstack.askai.browser.search.LegacyBrowserSearchSettings searchSettings) {
+        this.searchSettings = searchSettings == null
+                ? com.aresstack.askai.browser.search.LegacyBrowserSearchDefaults.create() : searchSettings;
         this.channel = PlaywrightSessionFactory.normalizeChannel(channel);
         this.headless = headless;
         this.startTimeoutMillis = startTimeoutMillis;
         this.navigationTimeoutMillis = navigationTimeoutMillis;
+    }
+
+    /** Dev/test only: search with one local engine template and key domains by host:port. */
+    PlaywrightChatEngine searchingLocally(String searchUrlTemplate) {
+        this.testSearchUrlTemplate = searchUrlTemplate;
+        return this;
     }
 
     /** The normalized channel this engine starts. */
@@ -91,7 +112,8 @@ public final class PlaywrightChatEngine implements BrowserEngine {
             }
             context.setDefaultNavigationTimeout(navigationTimeoutMillis);
             context.setDefaultTimeout(navigationTimeoutMillis);
-            return new Instance(playwright, context, navigationTimeoutMillis);
+            return new Instance(playwright, context, navigationTimeoutMillis, searchSettings,
+                    CamoufoxProvisioning.CHANNEL.equals(channel), testSearchUrlTemplate);
         } catch (PlaywrightException | java.io.IOException | IllegalStateException e) {
             if (playwright != null) {
                 try {
@@ -111,9 +133,17 @@ public final class PlaywrightChatEngine implements BrowserEngine {
         private final Playwright playwright;
         private final BrowserContext context;
         private final long navigationTimeoutMillis;
+        final com.aresstack.askai.browser.search.LegacyBrowserSearchSettings searchSettings;
+        final boolean camoufox;
+        final String testSearchUrlTemplate;
         private volatile boolean closed;
 
-        Instance(Playwright playwright, BrowserContext context, long navigationTimeoutMillis) {
+        Instance(Playwright playwright, BrowserContext context, long navigationTimeoutMillis,
+                 com.aresstack.askai.browser.search.LegacyBrowserSearchSettings searchSettings, boolean camoufox,
+                 String testSearchUrlTemplate) {
+            this.testSearchUrlTemplate = testSearchUrlTemplate;
+            this.searchSettings = searchSettings;
+            this.camoufox = camoufox;
             this.playwright = playwright;
             this.context = context;
             this.navigationTimeoutMillis = navigationTimeoutMillis;

@@ -605,6 +605,36 @@ final class PlaywrightChatConnection implements BrowserConnection {
     }
 
     @Override
+    public String search(String contextId, String query, List<String> engines) throws BrowserException {
+        synchronized (instance) {
+            check();
+            Page page = page(contextId);
+            // The search of the research browser (engine catalog, SERP extraction, consent, challenge) on this tab.
+            // Which addresses the chat may open stays with the chat tools' access guard; the search engines are
+            // the host's configured ones.
+            Playwright4jDriver driver = Playwright4jDriver.onChatTab(context, page,
+                    (int) Math.min(Integer.MAX_VALUE, navigationTimeoutMillis), instance.searchSettings.consent,
+                    instance.searchSettings.captcha, instance.camoufox);
+            driver.setRenderedCapture(new RenderedPageDocumentCapture(instance.searchSettings.analysis));
+            PlaywrightBrowserSession session = new PlaywrightBrowserSession(driver,
+                    com.aresstack.askai.browser.UrlSafetyPolicy.allowingPrivateNetworks(),
+                    com.aresstack.askai.browser.BrowserLimits.defaults(), instance.testSearchUrlTemplate, null,
+                    instance.searchSettings);
+            if (instance.testSearchUrlTemplate != null) {
+                session.setDomainKeyResolver(new com.aresstack.askai.browser.domain.HostPortDomainKeyResolver());
+            }
+            try {
+                return BrowserToolSet.renderSearch(session.search(query, engines), session.challengeStatus());
+            } catch (com.aresstack.askai.browser.BrowserException e) {
+                throw new BrowserException(BrowserException.Kind.FAILED, "Websuche fehlgeschlagen: " + e.getMessage(),
+                        e);
+            } catch (PlaywrightException e) {
+                throw classify(e);
+            }
+        }
+    }
+
+    @Override
     public RawScreenshot screenshot(String contextId, Map<String, String> marks, String clipRef, int maxBytes)
             throws BrowserException {
         synchronized (instance) {

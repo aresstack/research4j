@@ -128,4 +128,14 @@ public interface ChatBrowser {
 
     /** Whether a browser process of this chat runs right now (as far as the runtime knows). */
     boolean isRunning();
+
+    /**
+     * Searches {@code query} with the search engines of the browser in a tab ({@code null} = the current one, a new
+     * one when none is open) and answers the hits as text; see {@code BrowserConnection#search}. {@code engines}:
+     * catalog ids for this call, {@code null} for the configured ones.
+     */
+    default String search(String tabId, String query, List<String> engines) throws BrowserException {
+        throw new BrowserException(BrowserException.Kind.INVALID_REQUEST,
+                "Dieser Browser kann keine Suchmaschine bedienen");
+    }
 }

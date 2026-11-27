@@ -73,6 +73,10 @@ public final class BrowserMcpTools {
     public static final String ACT = "browser_act";
     public static final String SCREENSHOT = "browser_screenshot";
     public static final String OPEN_MANY = "browser_open_many";
+    /** Web search with the browser's search engines (not with a site's own search field). */
+    public static final String SEARCH = "browser_search";
+    static final String PARAM_QUERY = "query";
+    static final String PARAM_ENGINES = "engines";
     static final String PARAM_URLS = "urls";
     static final String PARAM_LINKS = "links";
     static final String PARAM_FROM_PAGE = "from_page";
@@ -156,6 +160,7 @@ public final class BrowserMcpTools {
         final ChatBrowser browser = browsers.browserOf(conversation);
         final WebExplorationRun run = runOf(conversation);
         return Collections.unmodifiableList(Arrays.asList(
+                search(tracked(run, call -> search(browser, run, call))),
                 tabs(tracked(run, call -> tabs(browser, call))),
                 navigate(tracked(run, call -> navigate(browser, run, call))),
                 read(tracked(run, call -> read(browser, run, call))),
@@ -276,6 +281,36 @@ public final class BrowserMcpTools {
                 McpToolParameter.enumeration(PARAM_ACTION, false, "list (default), select, new or close.", ACTIONS),
                 McpToolParameter.string(PARAM_TAB, false, "Tab id from the list, for select and close."),
                 McpToolParameter.string(PARAM_URL, false, "Optional http(s) address for a new tab."));
+    }
+
+    private static McpToolContribution search(McpToolHandler handler) {
+        return McpToolContribution.of(SEARCH,
+                "Search the web with the search engines of this chat's browser and return the hits: id: title — "
+                        + "address, then the snippet. The tab shows the result page afterwards. Open hits with "
+                        + NAVIGATE + " or several at once with " + OPEN_MANY + ". For a search inside one website "
+                        + "use that site's own search field (" + CONTROLS + ", " + ACT + ").",
+                handler,
+                McpToolParameter.string(PARAM_QUERY, true, "The search terms."),
+                McpToolParameter.stringArray(PARAM_ENGINES, false, "Search engine ids for this search only; "
+                        + "default the configured engines."),
+                McpToolParameter.string(PARAM_TAB, false, "Tab id; default the current tab."));
+    }
+
+    static McpToolResult search(ChatBrowser browser, WebExplorationRun run, McpToolCall call) {
+        String query = blankToNull(call.getString(PARAM_QUERY));
+        if (query == null) {
+            return McpToolResult.error("query fehlt");
+        }
+        List<String> engines = call.getStrings(PARAM_ENGINES);
+        try {
+            String hits = browser.search(blankToNull(call.getString(PARAM_TAB)), query,
+                    engines == null || engines.isEmpty() ? null : engines);
+            run.acted("Websuche: " + query);
+            return McpToolResult.ok(hits);
+        } catch (BrowserException e) {
+            run.failed(null, e.getMessage());
+            return McpToolResult.error(e.getMessage());
+        }
     }
 
     private static McpToolContribution navigate(McpToolHandler handler) {

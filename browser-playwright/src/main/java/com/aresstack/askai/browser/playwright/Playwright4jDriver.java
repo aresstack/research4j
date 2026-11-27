@@ -374,6 +374,18 @@ final class Playwright4jDriver implements PlaywrightDriver {
         return driver;
     }
 
+    /**
+     * A driver over one tab of the chat browser ({@link PlaywrightChatEngine}), for its web search: it owns nothing,
+     * closes no popups (new tabs of a chat page are the chat's tabs) and leaves page and context to the chat engine.
+     */
+    static Playwright4jDriver onChatTab(BrowserContext context, Page page, int timeoutMillis,
+                                        com.aresstack.askai.browser.search.ConsentHandlingSettings consent,
+                                        com.aresstack.askai.browser.search.CaptchaHandlingSettings captcha,
+                                        boolean camoufox) {
+        return new Playwright4jDriver(null, context.browser(), context, page, consent, captcha, timeoutMillis, false,
+                camoufox);
+    }
+
     /** Launch options of the local Firefox (chosen location, else autodetected). */
     static BrowserType.LaunchOptions localFirefoxOptions(boolean headless) {
         String executable = BrowserExecutables.effective(BrowserExecutables.FIREFOX);

@@ -24,8 +24,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 /**
- * The thirteen chat tools of browser-tools end to end over the Playwright engine and a local test server:
- * navigate, read, links, follow, open_many. Environment-gated like {@link PlaywrightChatEngineLiveTest}.
+ * The fourteen chat tools of browser-tools end to end over the Playwright engine and a local test server:
+ * search, navigate, links, open_many. Environment-gated like {@link PlaywrightChatEngineLiveTest}.
  */
 public class ChatToolsOverPlaywrightLiveTest {
 
@@ -47,7 +47,24 @@ public class ChatToolsOverPlaywrightLiveTest {
                 "<html><head><title>Seite B</title></head><body><p>Umzugskosten.</p></body></html>"));
         server.start();
         String base = "http://127.0.0.1:" + server.getAddress().getPort();
-        ChatBrowserRuntime runtime = new ChatBrowserRuntime(new PlaywrightChatEngine(channel, true, 60000L, 30000L),
+        // The search engine lives on its own server; its organic results link to the content server.
+        HttpServer engine = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        // A structurally valid artificial SERP like PlaywrightLiveBrowserTest's: navigation plus three similar
+        // result blocks (heading link and explanatory snippet).
+        engine.createContext("/find", exchange -> respond(exchange, "<!doctype html><html><head><title>Find</title>"
+                + "</head><body><nav><a href='/videos?q=x'>Videos</a><a href='/settings'>Settings</a></nav>"
+                + "<main><ul id='r'>"
+                + "<li><h2><a href='" + base + "/a'>Trennungsgeld Merkblatt (result)</a></h2>"
+                + "<p>Explanatory snippet describing when the separation allowance is paid.</p></li>"
+                + "<li><h2><a href='" + base + "/b'>Umzugskosten Merkblatt (result)</a></h2>"
+                + "<p>Explanatory snippet describing which removal costs are refunded.</p></li>"
+                + "<li><h2><a href='" + base + "/a?v=3'>Third Merkblatt (result)</a></h2>"
+                + "<p>Explanatory snippet describing the third target of this search.</p></li>"
+                + "</ul></main></body></html>"));
+        engine.start();
+        String engineBase = "http://127.0.0.1:" + engine.getAddress().getPort();
+        ChatBrowserRuntime runtime = new ChatBrowserRuntime(new PlaywrightChatEngine(channel, true, 60000L, 30000L)
+                .searchingLocally(engineBase + "/find?q={query}"),
                 new BrowserProfileStore(Files.createTempDirectory("chat-profiles")));
         try {
             Map<String, McpToolContribution> tools = new HashMap<>();
@@ -55,7 +72,10 @@ public class ChatToolsOverPlaywrightLiveTest {
                     new ChatConversationId("chat-1"))) {
                 tools.put(tool.getName(), tool);
             }
-            assertEquals(13, tools.size());
+            assertEquals(14, tools.size());
+
+            String hits = call(tools, BrowserMcpTools.SEARCH, Map.of("query", "Trennungsgeld"));
+            assertTrue(hits, hits.contains(base + "/a") && hits.contains("Trennungsgeld Merkblatt"));
 
             String page = call(tools, BrowserMcpTools.NAVIGATE, Map.of("url", base + "/a"));
             assertTrue(page, page.contains("Trennungsgeld"));
@@ -67,6 +87,7 @@ public class ChatToolsOverPlaywrightLiveTest {
         } finally {
             runtime.releaseAll();
             server.stop(0);
+            engine.stop(0);
         }
     }
 

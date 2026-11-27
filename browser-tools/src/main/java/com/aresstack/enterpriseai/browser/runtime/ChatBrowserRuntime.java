@@ -222,6 +222,17 @@ public final class ChatBrowserRuntime implements ChatBrowserPort {
         }
 
         @Override
+        public synchronized String search(final String tabId, final String query, final List<String> engines)
+                throws BrowserException {
+            return call(connection -> {
+                String raw = tabId == null ? currentOrNew(connection) : rawOf(connection, tabId);
+                snapshots.remove(raw);
+                remember(connection, raw);
+                return connection.search(raw, query, engines);
+            }, true);
+        }
+
+        @Override
         public synchronized BrowserPage read(final String tabId) throws BrowserException {
             return call(connection -> {
                 String raw = tabId == null ? currentOrFail(connection) : rawOf(connection, tabId);
