@@ -12,16 +12,25 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: research4j
+      # Knowledge4j is not released yet: a fixed commit next to it, joined by the Composite Build.
+      - uses: actions/checkout@v4
+        with:
+          repository: aresstack/knowledge4j
+          ref: 230a6237b3d8011991db56e17a2d5262abb30bc8
+          path: knowledge4j
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and verify libraries
+        working-directory: research4j
         run: bash gradlew --no-daemon clean build zipAggregation
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: '**/build/test-results/test/'
+          path: 'research4j/**/build/test-results/test/'
           if-no-files-found: ignore

@@ -8,12 +8,37 @@ Reusable Java research and browser components extracted from [Ask AI](https://gi
 
 ## Modules
 
+- **research-core** (new, `com.aresstack.research4j`): the source-neutral research of Phase 3. It fills the basket
+  (Korb, the contract of [Knowledge4j](https://github.com/aresstack/knowledge4j)) and knows no browser, no search
+  engine and no writing. See below.
 - browser-api, browser-playwright, browser-search-analysis, browser-static-http
 - web-search-providers, serp4j-playwright-google
 - research-domain, research-agent-runtime
 - agent-model-runtime-api, mcp-runtime-api (neutral host contracts)
 
 The original Java packages and resources are retained to minimize migration changes. Java 21 matches the upstream build. The Playwright backend uses playwright4j and requires isolation from older GraalJS versions in host applications.
+
+## Filling the basket (research-core)
+
+`BasketResearch` works only over the neutral ports of Knowledge4j:
+
+1. `ConceptQueryPlanner` writes queries per node of the mind map (concept), inside the fence: the node's base query
+   plus a few variants by the model. The concept only steers the search; the basket carries no trace of it.
+2. Every query goes to every `SearchChannel` the host offers (its own index, a web search); hits are merged per source.
+3. `SourceRouter` reads each new source over the first `FetchChannel` that supports it.
+4. `SourceJudge` checks each source against the fence (inside, mixed, outside, unclear). Every source but a clearly
+   outside one goes through the host's `SourceKeeper` into the basket; the basket holds references, the host keeps the
+   text. Child or linked sources of an accepted source are read in the next round, as deep as the host sets.
+5. A node is covered with enough sources from enough sites. Nodes not covered are planned again from another angle.
+
+The research ends at a standstill (rounds without a new source), when every node is covered, or when there is nothing
+new to search or read; there is no fixed number of rounds. Every search and read passes the run's `RunGuard`, so the
+host's transfer policy is checked on every exit and a refused step is a visible skipped step. The capacity of the
+host's model sets how many planner and judge calls run at once: one after the other on one graphics card, side by side
+on a cloud service, with the same basket.
+
+Knowledge4j is not released yet. Development uses a Gradle Composite Build with a checkout next to this one
+(`../knowledge4j`, or `-Pknowledge4j.dir=<folder>`); the CI checks it out at a fixed commit.
 
 ## Build
 
