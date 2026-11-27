@@ -65,5 +65,6 @@ sourceSets.test.java {
             '**/ProductiveResearchMvpEndToEndTest.java', '**/LiveLocalRerankerRuntime.java',
             '**/MainModelScopeProbeGeneratorLiveTest.java', '**/ScopeSweepEndToEndLiveTest.java',
             '**/ScopingConceptLiveTest.java', '**/ScopingTurnWireTest.java',
-            '**/ResearchLoopPlaywrightIntegrationTest.java', '**/LocalRerankerRuntimeIntegrationTest.java', '**/ScopingBriefSourceTest.java', '**/ProbeGenerationWireRoundTripTest.java', '**/ScopeAdviceWireRoundTripTest.java'
+            '**/ResearchLoopPlaywrightIntegrationTest.java', '**/LocalRerankerRuntimeIntegrationTest.java', '**/ScopingBriefSourceTest.java', '**/ProbeGenerationWireRoundTripTest.java', '**/ScopeAdviceWireRoundTripTest.java',
+            '**/PlannedManualSearchWireRoundTripTest.java'
 }

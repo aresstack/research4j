@@ -30,6 +30,9 @@ dependencies {
     // font groups and fingerprint profile with Gson, the house JSON library (ADR 0001, section 3.1); Playwright
     // needs Gson anyway, so the plugin lib/ carries no Jackson.
     implementation "com.google.code.gson:gson:${gsonVersion}"
+    // PDF search hits: the browser's PDF viewer runs no page script, so the session reads the PDF itself
+    // (PdfPageReader, PdfDocumentText).
+    implementation "org.apache.pdfbox:pdfbox:${rootProject.pdfboxVersion}"
 
     // The chat tools run end to end over this engine in the live test.
     testImplementation project(':browser-tools')

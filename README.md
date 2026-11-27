@@ -4,7 +4,7 @@
 
 Browser-based research and web intelligence for Java: browser automation, search strategy, information gathering, source evaluation and knowledge extraction as reusable libraries.
 
-Reusable Java research and browser components extracted from [Ask AI](https://github.com/aresstack/askai) at commit [3dfeecee60b1ee7db9e7cbead98cef13240ff0b6](https://github.com/aresstack/askai/commit/3dfeecee60b1ee7db9e7cbead98cef13240ff0b6). Ask AI remains unchanged; migration is tracked in [Ask AI #292](https://github.com/aresstack/askai/issues/292).
+Reusable Java research and browser components extracted from [Ask AI](https://github.com/aresstack/askai). The first extraction (v0.1.0) took commit [3dfeecee](https://github.com/aresstack/askai/commit/3dfeecee60b1ee7db9e7cbead98cef13240ff0b6) of 3 Nov 2026; the module sources now match Ask AI main at [d89d1c5f](https://github.com/aresstack/askai/commit/d89d1c5f) (26 Nov 2026). Ask AI remains unchanged; migration is tracked in [Ask AI #292](https://github.com/aresstack/askai/issues/292).
 
 ## Modules
 
