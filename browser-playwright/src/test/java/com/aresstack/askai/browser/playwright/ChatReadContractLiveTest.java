@@ -2,9 +2,15 @@ package com.aresstack.askai.browser.playwright;
 
 import com.aresstack.askai.browser.BrowserLink;
 import com.aresstack.askai.browser.BrowserPageSnapshot;
+import com.aresstack.enterpriseai.astu.chat.ChatConversationId;
+import com.aresstack.enterpriseai.browser.api.BrowserLinks;
+import com.aresstack.enterpriseai.browser.api.BrowserPage;
+import com.aresstack.enterpriseai.browser.api.ChatBrowser;
 import com.aresstack.enterpriseai.browser.api.engine.BrowserConnection;
 import com.aresstack.enterpriseai.browser.api.engine.RawLink;
 import com.aresstack.enterpriseai.browser.api.engine.RawPage;
+import com.aresstack.enterpriseai.browser.runtime.BrowserProfileStore;
+import com.aresstack.enterpriseai.browser.runtime.ChatBrowserRuntime;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.Test;
 
@@ -51,6 +57,9 @@ public class ChatReadContractLiveTest {
         String base = "http://127.0.0.1:" + server.getAddress().getPort();
         PlaywrightChatEngine.Instance instance = (PlaywrightChatEngine.Instance)
                 new PlaywrightChatEngine(launcher, true, 30000L).start(Files.createTempDirectory("contract-profile"));
+        // The chat tools run on this same browser: the runtime's engine hands out the started instance.
+        ChatBrowserRuntime runtime = new ChatBrowserRuntime(profile -> instance,
+                new BrowserProfileStore(Files.createTempDirectory("contract-profiles")));
         try {
             BrowserConnection chat = instance.connect();
             String tab = chat.tabs().get(0).contextId();
@@ -77,21 +86,36 @@ public class ChatReadContractLiveTest {
             }
             assertEquals(bTargets, aTargets);
 
-            // Folgen: following the same link reaches the same page.
-            String second = null;
-            for (BrowserLink link : aLinks) {
-                if (link.getUrl().equals(base + "/b")) {
-                    second = link.getId();
+            // Folgen: the chat's browser_follow (ChatBrowserRuntime: link snapshot, then navigate) and the research
+            // session's web_follow each follow the link to /b from /start and reach the same page.
+            ChatBrowser chatTools = runtime.browserOf(new ChatConversationId("contract"));
+            chatTools.navigate(null, base + "/start");
+            String chatLinkId = null;
+            for (com.aresstack.enterpriseai.browser.api.BrowserLink link
+                    : chatTools.links(null, BrowserLinks.MAX_LINKS, null).links()) {
+                if (link.url().equals(base + "/b")) {
+                    chatLinkId = link.id();
                 }
             }
-            assertTrue("link to /b among " + aTargets, second != null);
-            final String linkId = second;
-            BrowserPageSnapshot followed = instance.actor.call(session -> session.follow(linkId));
-            assertEquals(base + "/b", followed.getUrl());
-            RawPage seenByChat = chat.read(tab);
-            assertEquals(followed.getUrl(), seenByChat.url());
-            assertEquals(lines(seenByChat.text()), lines(followed.getText()));
+            assertTrue("chat link to /b among " + bTargets, chatLinkId != null);
+            BrowserPage chatFollowed = chatTools.follow(null, chatLinkId);
+            assertEquals(base + "/b", chatFollowed.url());
+
+            instance.actor.call(session -> session.open(base + "/start"));
+            String researchLinkId = null;
+            for (BrowserLink link : instance.actor.call(session -> session.links())) {
+                if (link.getUrl().equals(base + "/b")) {
+                    researchLinkId = link.getId();
+                }
+            }
+            assertTrue("research link to /b among " + aTargets, researchLinkId != null);
+            final String linkId = researchLinkId;
+            BrowserPageSnapshot researchFollowed = instance.actor.call(session -> session.follow(linkId));
+            assertEquals(chatFollowed.url(), researchFollowed.getUrl());
+            assertEquals(chatFollowed.title(), researchFollowed.getTitle());
+            assertEquals(lines(chatFollowed.text()), lines(researchFollowed.getText()));
         } finally {
+            runtime.releaseAll();
             instance.stop();
             server.stop(0);
         }
