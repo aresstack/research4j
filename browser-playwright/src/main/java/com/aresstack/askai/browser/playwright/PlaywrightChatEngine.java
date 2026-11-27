@@ -106,6 +106,8 @@ public final class PlaywrightChatEngine implements BrowserEngine {
                                 .setHeadless(headless)
                                 .setAcceptDownloads(false)
                                 .setViewportSize(null)
+                                .setFirefoxUserPrefs(FirefoxSessionPrefs.apply(
+                                        new java.util.LinkedHashMap<String, Object>()))
                                 .setTimeout(startTimeoutMillis));
             } else {
                 BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()

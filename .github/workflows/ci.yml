@@ -60,7 +60,7 @@ jobs:
           test -x "$path"
           "$path" --version
           echo "path=$path" >> "$GITHUB_OUTPUT"
-      - name: Chat engine and tools on Firefox
+      - name: Browser acceptance (incl. back, playwright4j#79), chat engine and tools on Firefox
         working-directory: research4j
         env:
           ASKAI_TEST_BROWSER_CHANNEL: firefox
@@ -69,6 +69,7 @@ jobs:
           bash gradlew --no-daemon :browser-playwright:liveTest
           --tests 'com.aresstack.askai.browser.playwright.PlaywrightChatEngineLiveTest'
           --tests 'com.aresstack.askai.browser.playwright.ChatToolsOverPlaywrightLiveTest'
+          --tests 'com.aresstack.askai.browser.playwright.PlaywrightLiveBrowserTest'
       - name: No live test skipped
         working-directory: research4j/browser-playwright/build/test-results/liveTest
         run: |

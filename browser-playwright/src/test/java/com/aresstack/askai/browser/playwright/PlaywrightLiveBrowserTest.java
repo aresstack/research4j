@@ -76,6 +76,10 @@ public class PlaywrightLiveBrowserTest {
     @Test
     public void realBrowserRendersJavaScriptFollowsLinksAndShutsDownCleanly() throws Exception {
         String channel = System.getenv().getOrDefault("ASKAI_TEST_BROWSER_CHANNEL", "chrome");
+        String executable = System.getenv("ASKAI_TEST_BROWSER_EXECUTABLE");
+        if (executable != null && !executable.isEmpty()) {
+            BrowserExecutables.use(channel, executable);
+        }
         PlaywrightReadiness readiness = new PlaywrightCapabilityProbe().probe(channel);
         assumeTrue("SKIPPED (environment-gated live test): " + readiness.render(), readiness.isReady());
 

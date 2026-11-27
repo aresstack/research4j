@@ -398,7 +398,8 @@ final class Playwright4jDriver implements PlaywrightDriver {
         return new BrowserType.LaunchOptions()
                 .setChannel(FIREFOX_BIDI_CHANNEL)
                 .setExecutablePath(localFirefoxExecutable())
-                .setHeadless(headless);
+                .setHeadless(headless)
+                .setFirefoxUserPrefs(FirefoxSessionPrefs.apply(new LinkedHashMap<String, Object>()));
     }
 
     /** Playwright's channel for a Firefox driven over WebDriver BiDi (local Firefox and Camoufox). */
@@ -2050,7 +2051,7 @@ final class Playwright4jDriver implements PlaywrightDriver {
         Map<String, String> environment = new java.util.HashMap<String, String>(System.getenv());
         environment.putAll(launch.environment());
         Map<String, Object> prefs = new LinkedHashMap<String, Object>(launch.prefs());
-        CamoufoxSessionPrefs.apply(prefs); // no bfcache + no blocking "resend data" prompt
+        FirefoxSessionPrefs.apply(prefs); // no bfcache + no blocking "resend data" prompt
         BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
                 .setChannel(FIREFOX_BIDI_CHANNEL)
                 .setExecutablePath(executable)
