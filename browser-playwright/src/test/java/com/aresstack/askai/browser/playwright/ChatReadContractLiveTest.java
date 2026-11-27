@@ -175,6 +175,10 @@ public class ChatReadContractLiveTest {
             assertTrue(read.text(), read.text().contains("Inhalt des Dokuments zum Vertrag"));
             BrowserPageSnapshot research = instance.actor.call(session -> session.currentPage());
             assertEquals(lines(read.text()), lines(research.getText()));
+            // Another tab in between: the PDF tab still reads as the document.
+            String other = chat.createTab();
+            chat.read(other);
+            assertTrue(chat.read(tab).text().contains("Inhalt des Dokuments zum Vertrag"));
         } finally {
             instance.stop();
             server.stop(0);

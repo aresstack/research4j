@@ -1682,6 +1682,13 @@ final class Playwright4jDriver implements PlaywrightDriver {
         return viewedDocument;
     }
 
+    /** The PDF the current tab's viewer shows, or null when it shows a page. Owner thread. */
+    PlaywrightPageState viewedDocumentOfCurrentTab() {
+        owner.check();
+        PlaywrightPageState viewed = viewedDocuments.get(page);
+        return viewed != null && viewed.url.equals(page.url()) ? viewed : null;
+    }
+
     /** The chat changed pages without naming one current page (parallel loading in several tabs). */
     void chatChangedPages() {
         owner.check();

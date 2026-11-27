@@ -822,16 +822,24 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                 ? PlaywrightPageState.downloadedDocument(url, driver.currentUrl())
                 : playwright().chatViewedDocument(response);
         if (state == null) {
+            currentDocument = null; // the load reached a page: a document read before is not what the tab shows
             return false;
         }
         checkedSnapshot(readDocument(state));
         return true;
     }
 
-    /** The document the current tab still shows, read, or null when it shows a page. */
+    /**
+     * The document the current tab still shows, read, or null when it shows a page. A PDF the tab's viewer shows is
+     * read anew when the session's read copy belonged to another tab.
+     */
     BrowserPageSnapshot chatDocument() throws BrowserException {
         PlaywrightPageState document = shownDocument();
-        return document == null ? null : checkedSnapshot(document);
+        if (document != null) {
+            return checkedSnapshot(document);
+        }
+        PlaywrightPageState viewed = playwright().viewedDocumentOfCurrentTab();
+        return viewed == null ? null : checkedSnapshot(readDocument(viewed));
     }
 
     /** The chat loaded pages in several tabs at once: link ids listed before may be stale. */
