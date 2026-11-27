@@ -237,7 +237,7 @@ final class Playwright4jDriver implements PlaywrightDriver {
             }
             driver.launchedMillis = System.currentTimeMillis();
             if (chat) {
-                page.onClose(driver.chatTabCloseWatcher());
+                driver.watchChatTab(page);
             } else {
                 page.onPopup(driver.popupCloser());
             }
@@ -313,18 +313,6 @@ final class Playwright4jDriver implements PlaywrightDriver {
         }
         page.onClose(driver.activeTabCloseWatcher());
         return driver;
-    }
-
-    /**
-     * A driver over one tab of the chat browser ({@link PlaywrightChatEngine}), for its web search: it owns nothing,
-     * closes no popups (new tabs of a chat page are the chat's tabs) and leaves page and context to the chat engine.
-     */
-    static Playwright4jDriver onChatTab(BrowserContext context, Page page, int timeoutMillis,
-                                        com.aresstack.askai.browser.search.ConsentHandlingSettings consent,
-                                        com.aresstack.askai.browser.search.CaptchaHandlingSettings captcha,
-                                        boolean camoufox) {
-        return new Playwright4jDriver(context.browser(), context, page, consent, captcha, timeoutMillis, false,
-                camoufox);
     }
 
     @Override
@@ -1651,8 +1639,33 @@ final class Playwright4jDriver implements PlaywrightDriver {
         };
     }
 
+    /** The chat's tabs whose closing the driver watches ({@link #chatTabCloseWatcher}); owner thread only. */
+    private final java.util.Set<Page> watchedChatTabs =
+            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Page, Boolean>());
+
     /**
-     * The chat's first tab closing: the driver goes on in another open tab of the context (its event pump needs a
+     * The research continues in the chat's tab {@code tab}: reads, links, guards and navigation of the session work on
+     * the tab the chat used last, so the chat's {@code browser_*} tools and the research's {@code web_*} tools see one
+     * current page. Owner thread, between calls.
+     */
+    void useChatTab(Page tab) {
+        owner.check();
+        if (tab == null || tab == page) {
+            return;
+        }
+        page = tab;
+        viewedDocument = null; // a document read in the other tab is not this tab's page
+        watchChatTab(tab);
+    }
+
+    private void watchChatTab(Page tab) {
+        if (watchedChatTabs.add(tab)) {
+            tab.onClose(chatTabCloseWatcher());
+        }
+    }
+
+    /**
+     * The chat's current tab closing: the driver goes on in another open tab of the context (its event pump needs a
      * page); only when none is left is the browser gone.
      */
     private Consumer<Page> chatTabCloseWatcher() {
@@ -1664,7 +1677,8 @@ final class Playwright4jDriver implements PlaywrightDriver {
                 for (Page other : context.pages()) {
                     if (other != gone && !other.isClosed()) {
                         page = other;
-                        other.onClose(chatTabCloseWatcher());
+                        viewedDocument = null;
+                        watchChatTab(other);
                         return;
                     }
                 }
@@ -1693,11 +1707,6 @@ final class Playwright4jDriver implements PlaywrightDriver {
      */
     void readThroughAddon(AddonBridge workerBridge) {
         this.readBridge = workerBridge;
-    }
-
-    /** Whether the browser is Camoufox (its page scripts run in the isolated world). */
-    boolean camoufox() {
-        return camoufox;
     }
 
     /** The research add-on's bridge, or null (switched off, not prepared or not loaded; Chrome/Edge worker tabs). */

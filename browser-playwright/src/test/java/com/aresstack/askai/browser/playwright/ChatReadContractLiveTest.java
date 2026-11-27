@@ -29,7 +29,8 @@ import static org.junit.Assume.assumeTrue;
  * Step 5 of the one implementation: the chat's reading (B, {@link PageOperations} behind the chat tools'
  * browser_read, browser_links, browser_follow) and the research session's reading (A, {@link PlaywrightBrowserSession}
  * behind web_read, web_links, web_follow) answer the same for the same tab. Both run on one browser and one owner
- * thread since the chat engine starts the research driver; this test reads one page through both.
+ * thread since the chat engine starts the research driver, and they share one current page (the tab the chat used
+ * last); this test reads one page through both.
  */
 public class ChatReadContractLiveTest {
 
@@ -63,8 +64,10 @@ public class ChatReadContractLiveTest {
         try {
             BrowserConnection chat = instance.connect();
             String tab = chat.tabs().get(0).contextId();
-            // The research session opens the page in its tab, the chat's first tab; both then read that tab.
-            BrowserPageSnapshot a = instance.actor.call(session -> session.open(base + "/start"));
+            // The chat opens the page in its tab; that tab is the research session's current page as well, so
+            // web_read (currentPage) reads it without opening anything.
+            chat.navigate(tab, base + "/start");
+            BrowserPageSnapshot a = instance.actor.call(session -> session.currentPage());
 
             // Lesen: the same address, title and visible text.
             RawPage b = chat.read(tab);
@@ -85,6 +88,15 @@ public class ChatReadContractLiveTest {
                 aTargets.add(link.getUrl());
             }
             assertEquals(bTargets, aTargets);
+
+            // One current page: a second chat tab becomes the research session's page when the chat uses it, and
+            // the first tab again when the chat reads that one.
+            String other = chat.createTab();
+            chat.navigate(other, base + "/a");
+            assertEquals(base + "/a", instance.actor.call(session -> session.currentPage()).getUrl());
+            chat.read(tab);
+            assertEquals(base + "/start", instance.actor.call(session -> session.currentPage()).getUrl());
+            chat.close(other);
 
             // Folgen: the chat's browser_follow (ChatBrowserRuntime: link snapshot, then navigate) and the research
             // session's web_follow each follow the link to /b from /start and reach the same page.
