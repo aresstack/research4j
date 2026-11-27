@@ -162,4 +162,14 @@ public class BrowserSearchEngineSelectionTest {
         assertEquals(2, new BrowserSearchEngineSelection(back, EngineAcquisitionMode.ALL_ENABLED)
                 .resolvedEnabledEngines().size());
     }
+
+    @Test
+    public void aSearchPageNamedTwiceIsVisitedOnce() {
+        String portal = "https://portal.example/suche?q={query}";
+        BrowserSearchEngineSelection selection = new BrowserSearchEngineSelection(Arrays.asList(
+                new BrowserSearchEngineSelection.Entry(portal, true, 1, 0, 0, null, null),
+                new BrowserSearchEngineSelection.Entry(portal, true, 1, 0, 1, null, null)),
+                EngineAcquisitionMode.ALL_ENABLED);
+        assertEquals(1, selection.resolvedEnabledEngines().size());
+    }
 }

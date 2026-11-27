@@ -272,13 +272,15 @@ public final class BrowserSearchEngineSelection {
     /**
      * An engine id in the flat form: a search page's URL ({@link BrowserSearchEngineCatalog#isSearchPage}) carries
      * {@code :} and {@code ,}, the separators of the form, so they (and {@code %}) are written percent-encoded.
-     * Catalog ids contain none of them and stay as they are.
+     * Catalog ids contain none of them and stay as they are. The same form carries ids in a comma-separated tool
+     * argument ({@code engines} of web_search and web_search_prepare).
      */
-    static String escapeId(String id) {
+    public static String escapeId(String id) {
         return id.replace("%", "%25").replace(":", "%3A").replace(",", "%2C");
     }
 
-    static String unescapeId(String id) {
+    /** The id an {@link #escapeId escaped} id stands for. */
+    public static String unescapeId(String id) {
         return id.replace("%3A", ":").replace("%3a", ":").replace("%2C", ",").replace("%2c", ",")
                 .replace("%25", "%");
     }
