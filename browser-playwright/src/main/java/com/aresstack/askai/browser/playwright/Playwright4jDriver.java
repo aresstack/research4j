@@ -1960,7 +1960,7 @@ final class Playwright4jDriver implements PlaywrightDriver {
      * executable, the fingerprint environment and prefs of the built-in profile, and NO Playwright
      * emulation (viewport, color scheme, motion ...) — the fingerprint owns the window and the screen.
      */
-    private static BrowserType.LaunchPersistentContextOptions camoufoxOptions(Path executable,
+    static BrowserType.LaunchPersistentContextOptions camoufoxOptions(Path executable,
                                                                               CamoufoxLaunch launch,
                                                                               boolean headless) {
         Map<String, String> environment = new java.util.HashMap<String, String>(System.getenv());

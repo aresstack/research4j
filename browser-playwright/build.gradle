@@ -31,6 +31,8 @@ dependencies {
     // needs Gson anyway, so the plugin lib/ carries no Jackson.
     implementation "com.google.code.gson:gson:${gsonVersion}"
 
+    // The chat tools run end to end over this engine in the live test.
+    testImplementation project(':browser-tools')
     testImplementation 'junit:junit:4.13.2'
     // The Camoufox tests come over from Argos unchanged (JUnit 5); the vintage engine keeps the JUnit 4 tests.
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'

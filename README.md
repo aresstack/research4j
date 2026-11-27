@@ -17,6 +17,8 @@ Reusable Java research and browser components extracted from [Ask AI](https://gi
   its own profile, access rules per profile with the host's question for unknown sites, the question before
   data-changing actions and the progress of a web exploration. Moved from the Enterprise AI Client, see
   [browser-tools/UPSTREAM.md](browser-tools/UPSTREAM.md); its contract (`ChatBrowser`, engine SPI) is in browser-api.
+  The engine is `PlaywrightChatEngine` in browser-playwright: a visible browser per chat profile folder (channel
+  `msedge`, `chrome` or `camoufox`), with the Enterprise AI Client's page scripts, waiting rules and real input.
 - web-search-providers, serp4j-playwright-google
 - research-domain, research-agent-runtime
 - agent-model-runtime-api, mcp-runtime-api (neutral host contracts)
