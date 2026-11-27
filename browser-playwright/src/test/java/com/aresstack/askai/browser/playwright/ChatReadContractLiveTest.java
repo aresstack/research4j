@@ -96,7 +96,16 @@ public class ChatReadContractLiveTest {
             assertEquals(base + "/a", instance.actor.call(session -> session.currentPage()).getUrl());
             chat.read(tab);
             assertEquals(base + "/start", instance.actor.call(session -> session.currentPage()).getUrl());
+            // Links the session listed belong to their page: after the chat moved the tab on, and after the
+            // session's tab closed and the first one took over, web_links lists the page as it is now.
+            chat.navigate(other, base + "/b");
+            assertTrue(instance.actor.call(session -> session.links()).isEmpty()); // /b has no links
+            chat.navigate(other, base + "/start");
+            assertEquals(aTargets(instance), bTargets);
+            chat.navigate(other, base + "/b");
+            instance.actor.call(session -> session.links());
             chat.close(other);
+            assertEquals(aTargets(instance), bTargets);
 
             // Folgen: the chat's browser_follow (ChatBrowserRuntime: link snapshot, then navigate) and the research
             // session's web_follow each follow the link to /b from /start and reach the same page.
@@ -131,6 +140,15 @@ public class ChatReadContractLiveTest {
             instance.stop();
             server.stop(0);
         }
+    }
+
+    /** The link targets the research session lists for its current page. */
+    private static Set<String> aTargets(PlaywrightChatEngine.Instance instance) throws Exception {
+        Set<String> targets = new LinkedHashSet<>();
+        for (BrowserLink link : instance.actor.call(session -> session.links())) {
+            targets.add(link.getUrl());
+        }
+        return targets;
     }
 
     /** The text as the model reads it: non-empty lines with collapsed white space. */

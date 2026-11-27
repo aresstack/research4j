@@ -136,6 +136,7 @@ final class PlaywrightChatConnection implements BrowserConnection {
     public Map<String, String> navigateAll(Map<String, String> urlByContext) throws BrowserException {
         return onOwner(session -> {
             check();
+            session.chatChangedPages();
             return operations.navigateAll(tabs::page, urlByContext, human, tabs::pointer);
         });
     }

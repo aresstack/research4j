@@ -55,7 +55,11 @@ final class Playwright4jDriver implements PlaywrightDriver {
      * add-on read), so {@link #current()} reports it as a document for the session to read instead of waiting for
      * a page read that never answers.
      */
-    private PlaywrightPageState viewedDocument;
+    /** The PDF a tab shows in the browser's viewer, per tab: a tab switch keeps each tab's document. */
+    private final java.util.Map<Page, PlaywrightPageState> viewedDocuments =
+            new java.util.IdentityHashMap<Page, PlaywrightPageState>();
+    /** See {@link #pageGeneration()}; owner thread only. */
+    private long pageGeneration;
     private Page page;
     /** The parked manual-challenge page (kept open for the user), or null. At most one at a time. */
     private Page challengePage;
@@ -343,6 +347,7 @@ final class Playwright4jDriver implements PlaywrightDriver {
         owner.check();
         requireOpen();
         try {
+            PlaywrightPageState viewedDocument = viewedDocuments.get(page);
             if (viewedDocument != null && viewedDocument.url.equals(page.url())) {
                 return viewedDocument;
             }
@@ -399,10 +404,11 @@ final class Playwright4jDriver implements PlaywrightDriver {
     private PlaywrightPageState pageOrDocument(com.microsoft.playwright.Response response) {
         String contentType = response == null ? null : response.headers().get("content-type");
         if (isPdf(contentType)) {
-            viewedDocument = PlaywrightPageState.viewedDocument(response.url(), contentType);
+            PlaywrightPageState viewedDocument = PlaywrightPageState.viewedDocument(response.url(), contentType);
+            viewedDocuments.put(page, viewedDocument);
             return viewedDocument;
         }
-        viewedDocument = null;
+        viewedDocuments.remove(page);
         return state();
     }
 
@@ -1650,12 +1656,23 @@ final class Playwright4jDriver implements PlaywrightDriver {
      */
     void useChatTab(Page tab) {
         owner.check();
-        if (tab == null || tab == page) {
+        if (tab == null) {
             return;
         }
+        pageGeneration++; // the chat may change the page, also when it stays on the same tab
         page = tab;
-        viewedDocument = null; // a document read in the other tab is not this tab's page
         watchChatTab(tab);
+    }
+
+    /** The chat changed pages without naming one current page (parallel loading in several tabs). */
+    void chatChangedPages() {
+        owner.check();
+        pageGeneration++;
+    }
+
+    @Override
+    public long pageGeneration() {
+        return pageGeneration;
     }
 
     private void watchChatTab(Page tab) {
@@ -1671,13 +1688,14 @@ final class Playwright4jDriver implements PlaywrightDriver {
     private Consumer<Page> chatTabCloseWatcher() {
         return new Consumer<Page>() {
             public void accept(Page gone) {
+                viewedDocuments.remove(gone);
                 if (closed || gone != page) {
                     return;
                 }
                 for (Page other : context.pages()) {
                     if (other != gone && !other.isClosed()) {
                         page = other;
-                        viewedDocument = null;
+                        pageGeneration++; // another tab took over: the session's links are the closed tab's
                         watchChatTab(other);
                         return;
                     }

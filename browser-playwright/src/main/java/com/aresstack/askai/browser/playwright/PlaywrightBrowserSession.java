@@ -32,8 +32,8 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
     private final String searchUrlTemplate;
     private WebSearchProvider searchProvider;
     private List<BrowserLink> currentLinks = Collections.emptyList();
-    /** The chat used the page since the session last listed its links: {@link #links()} lists them anew. */
-    private boolean linksBeforeChat;
+    /** {@link PlaywrightDriver#pageGeneration()} when {@link #currentLinks} were listed. */
+    private long linksGeneration;
     private boolean hasPage;
     /** Reads the PDF documents the browser reaches but cannot read as pages. */
     private final PdfPageReader documents;
@@ -343,6 +343,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
             throw refused;
         }
         List<BrowserLink> linksBefore = currentLinks;
+        long linksGenerationBefore = linksGeneration;
         boolean hadPage = hasPage;
         searchTabsUsed = false;
         try {
@@ -354,6 +355,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                 // The result pages were read in the tabs that are gone now: links and "has a page" are again those
                 // of the page the session is back on, so a follow_link never resolves an id of a closed tab.
                 currentLinks = linksBefore;
+                linksGeneration = linksGenerationBefore;
                 hasPage = hadPage;
             }
         }
@@ -799,18 +801,27 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
 
     /**
      * The chat uses {@code tab}: the session's current page is that tab from now on (one current page for chat and
-     * research). The chat may change the page, so link ids and a read document of the session are no longer this
-     * page's. Owner thread, between calls.
+     * research). The chat may change the page: link ids listed before are no longer this page's
+     * ({@link PlaywrightDriver#pageGeneration()}), and a document read before is read anew. Owner thread, between
+     * calls.
      */
     void useChatTab(com.microsoft.playwright.Page tab) {
+        playwright().useChatTab(tab);
+        currentDocument = null;
+        hasPage = true;
+    }
+
+    /** The chat loaded pages in several tabs at once: link ids listed before may be stale. */
+    void chatChangedPages() {
+        playwright().chatChangedPages();
+        currentDocument = null;
+    }
+
+    private Playwright4jDriver playwright() {
         if (!(driver instanceof Playwright4jDriver)) {
             throw new IllegalStateException("chat tabs need the Playwright driver");
         }
-        ((Playwright4jDriver) driver).useChatTab(tab);
-        currentDocument = null;
-        currentLinks = Collections.emptyList();
-        linksBeforeChat = true;
-        hasPage = true;
+        return (Playwright4jDriver) driver;
     }
 
     public BrowserPageSnapshot open(String url) throws BrowserException {
@@ -882,15 +893,17 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
 
     public List<BrowserLink> links() throws BrowserException {
         requirePage();
-        if (linksBeforeChat) {
-            checkedSnapshot(current()); // lists the links of the page as the chat left it
+        if (linksGeneration != driver.pageGeneration()) {
+            checkedSnapshot(current()); // the page changed outside the session: list its links as they are now
         }
         return currentLinks;
     }
 
     public BrowserPageSnapshot follow(String linkId) throws BrowserException {
         requirePage();
-        for (BrowserLink link : currentLinks) {
+        List<BrowserLink> listed = linksGeneration == driver.pageGeneration() ? currentLinks
+                : Collections.<BrowserLink>emptyList(); // ids of a page that changed outside the session
+        for (BrowserLink link : listed) {
             if (link.getId().equals(linkId)) {
                 return open(link.getUrl());
             }
@@ -1055,7 +1068,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
             links.add(new BrowserLink("link-" + id, anchor.text, anchor.href));
         }
         currentLinks = Collections.unmodifiableList(links);
-        linksBeforeChat = false;
+        linksGeneration = driver.pageGeneration();
         hasPage = true;
         currentDocument = state.isDocument() ? state : null;
         return new BrowserPageSnapshot(state.url, state.title, text, truncated);
