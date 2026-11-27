@@ -13,7 +13,7 @@ allprojects {
 
 ext.gsonVersion = '2.14.0'
 ext.serp4jVersion = '0.1.0'
-ext.knowledge4jVersion = '0.1.0-SNAPSHOT'
+ext.knowledge4jVersion = '0.1.0'
 ext.junitVersion = '5.11.4'
 
 subprojects {
