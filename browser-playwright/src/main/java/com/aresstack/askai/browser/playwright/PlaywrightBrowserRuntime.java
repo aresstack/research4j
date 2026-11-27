@@ -2,6 +2,7 @@ package com.aresstack.askai.browser.playwright;
 
 import com.aresstack.askai.browser.BrowserException;
 import com.aresstack.askai.browser.BrowserLimits;
+import com.aresstack.askai.browser.UrlSafetyPolicy;
 import com.aresstack.askai.browser.BrowserSession;
 import com.aresstack.askai.browser.domain.HostPortDomainKeyResolver;
 import com.aresstack.askai.browser.search.DefaultLegacyBrowserSearchSettingsValidator;
@@ -46,6 +47,7 @@ public final class PlaywrightBrowserRuntime implements AutoCloseable {
         final LegacyBrowserSearchSettings settings;
         final boolean hostPortDomainKeys;
         final String profileKey;
+        final UrlSafetyPolicy.HostGate hostGate;
 
         /**
          * @param channel              {@code camoufox} (default, also for null), {@code chrome} or {@code msedge}
@@ -68,6 +70,14 @@ public final class PlaywrightBrowserRuntime implements AutoCloseable {
          */
         public Options(String channel, boolean headless, boolean allowPrivateNetworks, String searchUrlTemplate,
                        LegacyBrowserSearchSettings settings, boolean hostPortDomainKeys, String profileKey) {
+            this(channel, headless, allowPrivateNetworks, searchUrlTemplate, settings, hostPortDomainKeys, profileKey,
+                    null);
+        }
+
+        private Options(String channel, boolean headless, boolean allowPrivateNetworks, String searchUrlTemplate,
+                        LegacyBrowserSearchSettings settings, boolean hostPortDomainKeys, String profileKey,
+                        UrlSafetyPolicy.HostGate hostGate) {
+            this.hostGate = hostGate;
             this.channel = channel;
             this.headless = headless;
             this.allowPrivateNetworks = allowPrivateNetworks;
@@ -76,6 +86,30 @@ public final class PlaywrightBrowserRuntime implements AutoCloseable {
             this.settings = settings == null ? LegacyBrowserSearchDefaults.create() : settings;
             this.hostPortDomainKeys = hostPortDomainKeys;
             this.profileKey = profileKey == null || profileKey.trim().isEmpty() ? null : profileKey;
+        }
+
+        /**
+         * The same options, but the host decides which targets this browser may open (an intranet profile, a
+         * question to the user) instead of the public-host rule; {@code null} restores the default. With a gate
+         * the browser drops its in-page filter against private addresses, the gate checks every navigation and
+         * every final address after a redirect.
+         */
+        public Options withHostGate(UrlSafetyPolicy.HostGate gate) {
+            return new Options(channel, headless, allowPrivateNetworks, searchUrlTemplate, settings,
+                    hostPortDomainKeys, profileKey, gate);
+        }
+
+        /** The navigation policy of these options. */
+        UrlSafetyPolicy urlPolicy() {
+            if (hostGate != null) {
+                return UrlSafetyPolicy.withHostGate(hostGate);
+            }
+            return allowPrivateNetworks ? UrlSafetyPolicy.allowingPrivateNetworks() : UrlSafetyPolicy.strict();
+        }
+
+        /** Whether the in-page filter against literal private addresses runs (only under the default rule). */
+        boolean filtersPrivateTargets() {
+            return hostGate == null && !allowPrivateNetworks;
         }
     }
 
@@ -121,8 +155,8 @@ public final class PlaywrightBrowserRuntime implements AutoCloseable {
             actor = BrowserSessionActor.start(new Supplier<BrowserSession>() {
                 public BrowserSession get() {
                     BrowserSession session = PlaywrightSessionFactory.create(channel, options.headless,
-                            options.allowPrivateNetworks, options.searchUrlTemplate, BrowserLimits.defaults(),
-                            options.settings, options.profileKey);
+                            options.urlPolicy(), options.filtersPrivateTargets(), options.searchUrlTemplate,
+                            BrowserLimits.defaults(), options.settings, options.profileKey);
                     created.set(session);
                     return session;
                 }

@@ -203,7 +203,7 @@ final class PlaywrightWorkerBrowserBackend implements WorkerBrowserBackend {
             BrowserContext context = browser.newContext(contextOptions);
             context.setDefaultNavigationTimeout(timeoutMillis);
             context.setDefaultTimeout(timeoutMillis);
-            if (!options.allowPrivateNetworks) {
+            if (options.filtersPrivateTargets()) {
                 final Predicate<String> allowed = new PlaywrightSessionFactory.PrivateTargetRequestFilter();
                 context.route("**/*", route -> {
                     if (allowed.test(route.request().url())) {
@@ -234,8 +234,7 @@ final class PlaywrightWorkerBrowserBackend implements WorkerBrowserBackend {
                     timeoutMillis, options.settings.consent, options.settings.captcha, camoufox);
             driver.setRenderedCapture(new RenderedPageDocumentCapture(options.settings.analysis));
             driver.readThroughAddon(readBridge);
-            UrlSafetyPolicy policy = options.allowPrivateNetworks
-                    ? UrlSafetyPolicy.allowingPrivateNetworks() : UrlSafetyPolicy.strict();
+            UrlSafetyPolicy policy = options.urlPolicy();
             PlaywrightBrowserSession session = new PlaywrightBrowserSession(driver, policy, BrowserLimits.defaults(),
                     options.searchUrlTemplate, null, options.settings);
             if (options.hostPortDomainKeys) {
