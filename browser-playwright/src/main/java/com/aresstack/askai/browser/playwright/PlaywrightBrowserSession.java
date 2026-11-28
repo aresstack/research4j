@@ -452,7 +452,8 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                 continue; // the loop records the lock and opens nothing for it
             }
             budget--;
-            if (engine.usesSearchForms()) {
+            // A search page with a remembered result URL opens that URL in the loop instead of its field.
+            if (engine.usesSearchForms() && !derivedSearchUrls.containsKey(engine.getId())) {
                 together.add(engine);
             }
             if (mode == com.aresstack.askai.browser.search.engine.EngineAcquisitionMode.FIRST_USABLE) {
