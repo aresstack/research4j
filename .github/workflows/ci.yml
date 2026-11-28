@@ -95,3 +95,52 @@ jobs:
           name: firefox-live-results
           path: 'research4j/browser-playwright/build/test-results/liveTest/'
           if-no-files-found: error
+
+  firefox-company-policies:
+    # The user's own Firefox as a company manages it: enterprise policies the chat's first page must survive.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        policy: [none, addons-blocked, start-page, new-tab-page]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: research4j
+      - uses: actions/checkout@v4
+        with:
+          repository: aresstack/knowledge4j
+          ref: 4f20975b93c0b558ee7ff197366eba51162bb042
+          path: knowledge4j
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Locate Firefox
+        id: firefox
+        run: |
+          path="$(readlink -f "$(command -v firefox)")"
+          test -x "$path"
+          "$path" --version
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+      - name: Company policy ${{ matrix.policy }}
+        run: |
+          case "${{ matrix.policy }}" in
+            none) exit 0 ;;
+            addons-blocked) policy='{"policies":{"ExtensionSettings":{"*":{"installation_mode":"blocked"}}}}' ;;
+            start-page) policy='{"policies":{"Homepage":{"URL":"about:home","StartPage":"homepage","Locked":true}}}' ;;
+            new-tab-page) policy='{"policies":{"Homepage":{"StartPage":"homepage"},"FirefoxHome":{"Search":false,"TopSites":false,"SponsoredTopSites":false,"Highlights":false,"Pocket":false,"SponsoredPocket":false,"Snippets":false,"Locked":true}}}' ;;
+          esac
+          dir="$(dirname "${{ steps.firefox.outputs.path }}")/distribution"
+          sudo mkdir -p "$dir" /etc/firefox/policies
+          echo "$policy" | sudo tee "$dir/policies.json" /etc/firefox/policies/policies.json
+      - name: First page of a chat in the first tab
+        working-directory: research4j
+        env:
+          ASKAI_TEST_BROWSER_CHANNEL: firefox
+          ASKAI_TEST_BROWSER_EXECUTABLE: ${{ steps.firefox.outputs.path }}
+        run: >
+          xvfb-run -a bash gradlew --no-daemon :browser-playwright:liveTest -i
+          --tests 'com.aresstack.askai.browser.playwright.ChatFirstTabLiveTest'
