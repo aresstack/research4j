@@ -171,6 +171,8 @@ public class PlaywrightBrowserSessionTest {
         final List<List<String>> openedTabSets = new ArrayList<List<String>>();
         /** The user closed the window: opening tabs fails the way the real driver reports it. */
         boolean windowClosed;
+        /** Addresses that do not load in a search tab. */
+        final java.util.Set<String> unreachable = new java.util.HashSet<String>();
 
         /** The thread that opened the last set of search tabs. */
         volatile String searchTabThread;
@@ -186,9 +188,17 @@ public class PlaywrightBrowserSessionTest {
             tabHomes.addAll(homeUrls);
             List<String> loaded = new ArrayList<String>();
             for (int i = 0; i < homeUrls.size(); i++) {
-                loaded.add(null);
+                loaded.add(unreachable.contains(homeUrls.get(i)) ? "net::ERR_CONNECTION_REFUSED" : null);
             }
             return loaded;
+        }
+
+        @Override
+        public PlaywrightPageState openInSearchTab(int index, String url) {
+            tabHomes.set(index, url);
+            PlaywrightPageState start = state(url, "Start", "a start page");
+            history.add(start);
+            return start;
         }
 
         @Override
@@ -270,22 +280,48 @@ public class PlaywrightBrowserSessionTest {
                 PlaywrightBrowserSession.deriveSearchUrl("https://reisekosten.example/", "reisekosten"));
     }
 
+    /**
+     * A remembered result URL opens in the search page's own tab, never over the session's page, and the field is
+     * not typed into.
+     */
+    @Test
+    public void aRememberedResultUrlOpensInTheSearchTabWithoutTyping() throws Exception {
+        FakeDriver driver = new FakeDriver();
+        String portal = "http://portal.test/";
+        driver.typedResults.put(portal, resultsPage("http://portal.test/find?q=hase", "portal"));
+        driver.typedResults.put("http://portal.test/find?q=fuchs", resultsPage("http://portal.test/find?q=fuchs",
+                "fuchs"));
+        PlaywrightBrowserSession s = session(driver,
+                com.aresstack.askai.browser.search.engine.EngineAcquisitionMode.ALL_ENABLED);
+        s.setSearchEngines(java.util.Collections.singletonList(formEngine(portal, portal)));
+        s.search("hase");
+
+        WebSearchResult again = s.search("fuchs");
+
+        assertEquals(java.util.Collections.singletonList("http://portal.test/find?q=fuchs"),
+                driver.openedTabSets.get(1));
+        assertTrue("the session's own page was never navigated: " + driver.opened, driver.opened.isEmpty());
+        assertEquals("the field was not typed into again", 1, driver.typedQueries.size());
+        assertEquals(3, again.getItems().size());
+    }
+
     /** A remembered result URL that cannot be opened any more is forgotten, and the page's own field asked again. */
     @Test
     public void aRememberedResultUrlThatFailsToOpenIsForgottenAndTheFieldAskedAgain() throws Exception {
         FakeDriver driver = new FakeDriver();
         String portal = "http://portal.test/";
         driver.typedResults.put(portal, resultsPage("http://portal.test/find?q=hase", "portal"));
+        driver.unreachable.add("http://portal.test/find?q=fuchs");
         PlaywrightBrowserSession s = session(driver,
                 com.aresstack.askai.browser.search.engine.EngineAcquisitionMode.ALL_ENABLED);
         s.setSearchEngines(java.util.Collections.singletonList(formEngine(portal, portal)));
         s.search("hase");
-        assertTrue("the first search went through the field: " + driver.opened, driver.opened.isEmpty());
 
         WebSearchResult again = s.search("fuchs");
 
-        assertEquals("the remembered URL was tried first", java.util.Collections.singletonList(
-                "http://portal.test/find?q=fuchs"), driver.opened);
+        assertEquals("the remembered URL was tried first, in the search tab", java.util.Collections.singletonList(
+                "http://portal.test/find?q=fuchs"), driver.openedTabSets.get(1));
+        assertTrue("the session's own page was never navigated: " + driver.opened, driver.opened.isEmpty());
         assertEquals("then the field was asked again", 2, driver.typedQueries.size());
         assertEquals("fuchs", driver.typedQueries.get(1));
         assertEquals(3, again.getItems().size());

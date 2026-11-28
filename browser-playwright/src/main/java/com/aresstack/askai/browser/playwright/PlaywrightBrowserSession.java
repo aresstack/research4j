@@ -395,8 +395,9 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
 
     /**
      * Opens the start page of every form engine in a tab of its own (one parallel fan-out) and types the query into
-     * all of them at the same time, Enter in each. Engines asked by URL template (the dev/test override) are not part
-     * of it. Null when there is no form engine or the driver has no tabs.
+     * all of them at the same time, Enter in each. A search page with a remembered result URL gets that URL in its tab
+     * and is not typed into. Engines asked by URL template (the dev/test override) are not part of it. Null when there
+     * is no form engine or the driver has no tabs.
      */
     private SearchTabs openAndTypeSearchTabs(
             java.util.List<com.aresstack.askai.browser.search.engine.BrowserSearchEngine> formEngines, String query)
@@ -405,17 +406,27 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
             return null;
         }
         java.util.List<String> homes = new ArrayList<String>();
+        java.util.List<Boolean> remembered = new ArrayList<Boolean>();
         for (com.aresstack.askai.browser.search.engine.BrowserSearchEngine engine : formEngines) {
-            homes.add(engine.formOf(0).getHomeUrl());
+            SearchUrl derived = derivedSearchUrls.get(engine.getId());
+            homes.add(derived != null ? derived.forQuery(query) : engine.formOf(0).getHomeUrl());
+            remembered.add(derived != null);
         }
         searchTabsUsed = true;
         try {
             java.util.List<String> loaded = driver.openSearchTabs(homes);
             java.util.List<java.util.List<String>> fields = new ArrayList<java.util.List<String>>();
             for (int i = 0; i < formEngines.size(); i++) {
-                fields.add(loaded.get(i) == null ? formEngines.get(i).formOf(0).getSearchBoxSelectors() : null);
+                fields.add(loaded.get(i) == null && !remembered.get(i)
+                        ? formEngines.get(i).formOf(0).getSearchBoxSelectors() : null);
             }
-            SearchTabs tabs = new SearchTabs(loaded, new ArrayList<String>(driver.submitSearchInTabs(fields, query)));
+            java.util.List<String> typed = new ArrayList<String>();
+            if (fields.stream().anyMatch(java.util.Objects::nonNull)) {
+                typed.addAll(driver.submitSearchInTabs(fields, query));
+            } else {
+                typed.addAll(java.util.Collections.nCopies(fields.size(), "skipped")); // nothing to type into
+            }
+            SearchTabs tabs = new SearchTabs(loaded, typed);
             for (int i = 0; i < formEngines.size(); i++) {
                 tabs.tabOf.put(formEngines.get(i).getId(), i);
             }
@@ -452,8 +463,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                 continue; // the loop records the lock and opens nothing for it
             }
             budget--;
-            // A search page with a remembered result URL opens that URL in the loop instead of its field.
-            if (engine.usesSearchForms() && !derivedSearchUrls.containsKey(engine.getId())) {
+            if (engine.usesSearchForms()) {
                 together.add(engine);
             }
             if (mode == com.aresstack.askai.browser.search.engine.EngineAcquisitionMode.FIRST_USABLE) {
@@ -468,13 +478,14 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
      * the other engines), or its fallback start page loaded in the same tab and typed into alone. A start page whose
      * field is covered gets one consent dismissal and one more try. A start page that shows a challenge is returned
      * as it is, so the challenge handling below sees it. Null (with the attempt recorded) when the field could not be
-     * used: never a result URL instead.
+     * used: never a result URL instead. {@code again}: the tab showed a remembered result URL that failed; its start
+     * page is loaded there and typed into now.
      */
     private BrowserPageSnapshot firstResultPageThroughForm(
             com.aresstack.askai.browser.search.engine.BrowserSearchEngine engine, int endpointIndex,
             com.aresstack.askai.browser.search.engine.BrowserSearchEngine.SearchForm form, String query,
-            String engineHost, List<com.aresstack.askai.browser.LegacySearchEngineAttemptResult> attempts)
-            throws BrowserException {
+            String engineHost, List<com.aresstack.askai.browser.LegacySearchEngineAttemptResult> attempts,
+            boolean again) throws BrowserException {
         Integer tab = searchTabs == null ? null : searchTabs.tabOf.get(engine.getId());
         if (tab == null && endpointIndex == 0) {
             // Not typed together with the others (FIRST_USABLE asks the next engine only now): its own tab, typed alone.
@@ -492,7 +503,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
             return null;
         }
         String typed;
-        if (endpointIndex == 0) {
+        if (endpointIndex == 0 && !again) {
             String loadProblem = searchTabs.loadProblems.get(tab);
             if (loadProblem != null) {
                 attempts.add(attempt(engineHost,
@@ -520,6 +531,30 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
         attempts.add(attempt(engineHost,
                 com.aresstack.askai.browser.LegacySearchAttemptOutcome.SEARCH_BOX_UNAVAILABLE, typed));
         return null;
+    }
+
+    /**
+     * Result page 1 of a search page with a remembered result URL: its tab, which opened that URL for this query (its
+     * own tab now when it was not opened with the others). Fails like a navigation when the URL did not load, so the
+     * caller forgets it and asks the field.
+     */
+    private BrowserPageSnapshot rememberedResultPage(
+            com.aresstack.askai.browser.search.engine.BrowserSearchEngine engine, String query)
+            throws BrowserException {
+        Integer tab = searchTabs == null ? null : searchTabs.tabOf.get(engine.getId());
+        if (tab == null) {
+            SearchTabs own = openAndTypeSearchTabs(java.util.Collections.singletonList(engine), query);
+            if (own == null) {
+                throw new BrowserException("no tab for the remembered result page");
+            }
+            searchTabs = own;
+            tab = own.tabOf.get(engine.getId());
+        }
+        String loadProblem = searchTabs.loadProblems.get(tab);
+        if (loadProblem != null) {
+            throw new BrowserException("remembered result page not loaded: " + loadProblem);
+        }
+        return checkedSnapshot(driver.useSearchTab(tab));
     }
 
     /** Types the query into ONE search tab (a fallback endpoint or a retry after a consent banner). */
@@ -640,11 +675,11 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                             page = open(pageUrl);
                         } else if (derived != null) {
                             derivedOpened = true;
-                            page = open(derived.forQuery(query.trim()));
+                            page = rememberedResultPage(engine, query.trim());
                         } else if (resultPage == 1) {
                             // Asked like a person: the query typed into the start page's field, never a result URL.
                             page = firstResultPageThroughForm(engine, endpointIndex, form, query.trim(), engineHost,
-                                    attempts);
+                                    attempts, derivedOpened);
                             if (page == null) {
                                 anyEngineReached = true;
                                 break;
@@ -663,6 +698,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                         }
                         if (derived != null && derivedSearchUrls.remove(engine.getId()) != null) {
                             resultPage--; // the remembered result URL cannot be opened: through the field again
+                            resultPagesRead.clear();
                             continue;
                         }
                         lastFailure = engineUnreachable;
@@ -739,6 +775,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
                             }
                         } else if (derivedOpened && derivedSearchUrls.remove(engine.getId()) != null) {
                             resultPage--; // the remembered result URL no longer works: through the field again
+                            resultPagesRead.clear(); // the field's page may show the same links, now readable
                             continue;
                         }
                     }
