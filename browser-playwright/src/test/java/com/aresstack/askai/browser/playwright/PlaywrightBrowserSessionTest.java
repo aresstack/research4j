@@ -248,17 +248,56 @@ public class PlaywrightBrowserSessionTest {
      * them in ONE call (side by side), each tab's result page is evaluated, and no result URL is ever opened.
      */
     @Test
-    public void theResultUrlOfASearchPagesOwnFieldBecomesItsSearchUrl() {
-        assertEquals("https://portal.example/suche?q={query}&bereich=alle",
-                PlaywrightBrowserSession.deriveSearchUrl("https://portal.example/suche?q=Reisekosten+Inland"
-                        + "&bereich=alle", "Reisekosten Inland"));
-        assertEquals("https://portal.example/#/search/{query}",
-                PlaywrightBrowserSession.deriveSearchUrl("https://portal.example/#/search/Reisekosten%20Inland",
-                        "Reisekosten Inland"));
+    public void theResultUrlOfASearchPagesOwnFieldBecomesItsSearchUrl() throws Exception {
+        PlaywrightBrowserSession.SearchUrl parameter = PlaywrightBrowserSession.deriveSearchUrl(
+                "https://portal.example/suche?q=Reisekosten+Inland&bereich=alle", "Reisekosten Inland");
+        assertEquals("https://portal.example/suche?q={query}&bereich=alle", parameter.template);
+        assertEquals("https://portal.example/suche?q=Umzugskosten+Inland&bereich=alle",
+                parameter.forQuery("Umzugskosten Inland"));
+        PlaywrightBrowserSession.SearchUrl hashRoute = PlaywrightBrowserSession.deriveSearchUrl(
+                "https://portal.example/#/search/Reisekosten%20Inland", "Reisekosten Inland");
+        assertEquals("https://portal.example/#/search/{query}", hashRoute.template);
+        assertEquals("a hash route keeps its percent encoding", "https://portal.example/#/search/Umzugskosten%20Inland",
+                hashRoute.forQuery("Umzugskosten Inland"));
+        PlaywrightBrowserSession.SearchUrl path = PlaywrightBrowserSession.deriveSearchUrl(
+                "https://portal.example/suche/Reisekosten+Inland/seite/1", "Reisekosten Inland");
+        assertEquals("https://portal.example/suche/{query}/seite/1", path.template);
+        assertEquals("a path that writes + for a space keeps it", "https://portal.example/suche/Umzugskosten+Inland/seite/1",
+                path.forQuery("Umzugskosten Inland"));
         assertEquals("by POST: nothing to remember", null,
                 PlaywrightBrowserSession.deriveSearchUrl("https://portal.example/suche", "Reisekosten"));
         assertEquals("a word of the host is no search word", null,
                 PlaywrightBrowserSession.deriveSearchUrl("https://reisekosten.example/", "reisekosten"));
+    }
+
+    /** A remembered result URL that cannot be opened any more is forgotten, and the page's own field asked again. */
+    @Test
+    public void aRememberedResultUrlThatFailsToOpenIsForgottenAndTheFieldAskedAgain() throws Exception {
+        FakeDriver driver = new FakeDriver();
+        String portal = "http://portal.test/";
+        driver.typedResults.put(portal, resultsPage("http://portal.test/find?q=hase", "portal"));
+        PlaywrightBrowserSession s = session(driver,
+                com.aresstack.askai.browser.search.engine.EngineAcquisitionMode.ALL_ENABLED);
+        s.setSearchEngines(java.util.Collections.singletonList(formEngine(portal, portal)));
+        s.search("hase");
+        assertTrue("the first search went through the field: " + driver.opened, driver.opened.isEmpty());
+
+        WebSearchResult again = s.search("fuchs");
+
+        assertEquals("the remembered URL was tried first", java.util.Collections.singletonList(
+                "http://portal.test/find?q=fuchs"), driver.opened);
+        assertEquals("then the field was asked again", 2, driver.typedQueries.size());
+        assertEquals("fuchs", driver.typedQueries.get(1));
+        assertEquals(3, again.getItems().size());
+    }
+
+    /** The search words are the parameter's value, never a path segment or a parameter name that reads the same. */
+    @Test
+    public void theSearchWordsAreTheQueryComponentNotTheFirstPlaceTheyOccur() throws Exception {
+        PlaywrightBrowserSession.SearchUrl url = PlaywrightBrowserSession.deriveSearchUrl(
+                "https://portal.example/search?search=search", "search");
+        assertEquals("https://portal.example/search?search={query}", url.template);
+        assertEquals("https://portal.example/search?search=expenses", url.forQuery("expenses"));
     }
 
     @Test
