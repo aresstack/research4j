@@ -352,11 +352,19 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
         long linksGenerationBefore = linksGeneration;
         boolean hadPage = hasPage;
         searchTabsUsed = false;
+        boolean ownTab = searchInOwnTab;
+        if (ownTab) {
+            driver.beginSearchTab(); // a browser shared with a chat: not even a URL-template engine touches its tab
+            searchTabsUsed = true;
+        }
         try {
             return navigateAndCapture(query, consumer);
         } finally {
             searchTabs = null;
             driver.closeSearchTabs(); // a parked challenge tab stays open; the session returns to its own page
+            if (ownTab) {
+                driver.endSearchTab();
+            }
             if (searchTabsUsed) {
                 // The result pages were read in the tabs that are gone now: links and "has a page" are again those
                 // of the page the session is back on, so a follow_link never resolves an id of a closed tab.
@@ -381,6 +389,9 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
      * with {@code {query}} for the words, so the next search opens it directly. A result URL that cannot be opened or
      * delivers nothing is forgotten and found again through the field.
      */
+    /** Whether every search runs in a tab of its own: the browser is shared with a chat's tabs. */
+    private volatile boolean searchInOwnTab;
+
     private volatile java.util.Map<String, SearchUrl> derivedSearchUrls =
             new java.util.concurrent.ConcurrentHashMap<String, SearchUrl>();
 
@@ -391,6 +402,7 @@ final class PlaywrightBrowserSession implements BrowserSession, EngineGroupSessi
      */
     void useSearchSettings(com.aresstack.askai.browser.search.LegacyBrowserSearchSettings next,
                            SearchUrlMemory memory) {
+        searchInOwnTab = true; // the browser is the chat's: every search runs in a tab of its own
         if (next != null) {
             settings = next;
         }
